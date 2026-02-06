@@ -8,6 +8,194 @@ const currentMonth = {
 const charts = {};
 
 // ═══════════════════════════════════════════
+// AUTENTICAÇÃO
+// ═══════════════════════════════════════════
+
+let authToken = localStorage.getItem('auth_token') || '';
+
+function saveToken(token) {
+    authToken = token;
+    localStorage.setItem('auth_token', token);
+}
+
+function clearToken() {
+    authToken = '';
+    localStorage.removeItem('auth_token');
+}
+
+function showLogin() {
+    document.getElementById('login-overlay').classList.remove('hidden');
+    document.getElementById('login-username').value = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-error').style.display = 'none';
+    document.getElementById('login-username').focus();
+}
+
+function hideLogin() {
+    document.getElementById('login-overlay').classList.add('hidden');
+}
+
+async function checkAuth() {
+    if (!authToken) {
+        showLogin();
+        return false;
+    }
+    try {
+        const res = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+            hideLogin();
+            document.getElementById('sidebar-username').textContent = data.data.nome || data.data.username;
+            return true;
+        } else {
+            clearToken();
+            showLogin();
+            return false;
+        }
+    } catch {
+        clearToken();
+        showLogin();
+        return false;
+    }
+}
+
+async function doLogin(username, password) {
+    const btn = document.getElementById('btn-login');
+    const errorDiv = document.getElementById('login-error');
+    const errorText = document.getElementById('login-error-text');
+
+    btn.innerHTML = '<span class="spinner"></span> Entrando...';
+    btn.disabled = true;
+    errorDiv.style.display = 'none';
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            saveToken(data.data.token);
+            hideLogin();
+            document.getElementById('sidebar-username').textContent =
+                data.data.usuario.nome || data.data.usuario.username;
+            loadEstoque();
+            showToast(`Bem-vindo, ${data.data.usuario.nome || data.data.usuario.username}!`, 'success');
+        } else {
+            errorText.textContent = data.error || 'Credenciais inválidas';
+            errorDiv.style.display = 'flex';
+        }
+    } catch {
+        errorText.textContent = 'Erro de conexão com o servidor';
+        errorDiv.style.display = 'flex';
+    } finally {
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+        btn.disabled = false;
+    }
+}
+
+async function doLogout() {
+    try {
+        await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+    } catch { /* ignora */ }
+    clearToken();
+    showLogin();
+    showToast('Você saiu do sistema', 'info');
+}
+
+function togglePasswordVisibility() {
+    const input = document.getElementById('login-password');
+    const icon = document.getElementById('password-eye-icon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+
+function showChangePassword() {
+    document.getElementById('modal-senha').style.display = 'flex';
+    document.getElementById('senha-atual').value = '';
+    document.getElementById('nova-senha').value = '';
+    document.getElementById('confirmar-senha').value = '';
+    document.getElementById('senha-atual').focus();
+    // Fechar sidebar mobile
+    document.getElementById('sidebar').classList.remove('open');
+}
+
+function hideChangePassword() {
+    document.getElementById('modal-senha').style.display = 'none';
+}
+
+async function doChangePassword(senhaAtual, novaSenha) {
+    try {
+        const res = await api('/api/auth/alterar-senha', {
+            method: 'POST',
+            body: JSON.stringify({ senha_atual: senhaAtual, nova_senha: novaSenha })
+        });
+        showToast('Senha alterada! Faça login novamente.', 'success');
+        hideChangePassword();
+        clearToken();
+        showLogin();
+    } catch {
+        // Toast já exibido pelo api()
+    }
+}
+
+// ═══════════════════════════════════════════
+// EXPORTAÇÃO (PDF / Excel)
+// ═══════════════════════════════════════════
+
+function getReportMonth() {
+    const month = document.getElementById('report-month')?.value;
+    const year = document.getElementById('report-year')?.value;
+    if (month && year) return `${year}-${month}`;
+    return getCurrentMonth();
+}
+
+function getReportYear() {
+    return document.getElementById('report-year')?.value || new Date().getFullYear().toString();
+}
+
+function downloadWithAuth(url) {
+    // Create a temporary link with the auth token as query param
+    // Since we set cookie on login, file downloads use cookie auth automatically
+    const link = document.createElement('a');
+    link.href = url;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => link.remove(), 1000);
+}
+
+function exportExcel() {
+    const mes = getReportMonth();
+    downloadWithAuth(`/api/export/excel?mes=${mes}`);
+    showToast(`Baixando Excel de ${formatMonthLabel(mes)}...`, 'info');
+}
+
+function exportPDF() {
+    const mes = getReportMonth();
+    downloadWithAuth(`/api/export/pdf?mes=${mes}`);
+    showToast(`Baixando PDF de ${formatMonthLabel(mes)}...`, 'info');
+}
+
+function exportExcelAnual() {
+    const ano = getReportYear();
+    downloadWithAuth(`/api/export/excel-anual?ano=${ano}`);
+    showToast(`Baixando Excel anual de ${ano}...`, 'info');
+}
+
+// ═══════════════════════════════════════════
 // FUNÇÕES UTILITÁRIAS
 // ═══════════════════════════════════════════
 
@@ -48,10 +236,22 @@ function formatMonthLabel(monthStr) {
 
 async function api(endpoint, options = {}) {
     try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
         const response = await fetch(endpoint, {
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             ...options
         });
+
+        // Sessão expirada → redirecionar para login
+        if (response.status === 401) {
+            clearToken();
+            showLogin();
+            throw new Error('Sessão expirada. Faça login novamente.');
+        }
+
         const data = await response.json();
         if (!data.success) {
             throw new Error(data.error || 'Erro desconhecido');
@@ -667,6 +867,42 @@ function changeMonth(section, delta) {
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    // ── Autenticação: verificar sessão ──
+    checkAuth().then(authenticated => {
+        if (authenticated) loadEstoque();
+    });
+
+    // ── Formulário: Login ──
+    document.getElementById('form-login').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        doLogin(username, password);
+    });
+
+    // ── Formulário: Alterar Senha ──
+    document.getElementById('form-alterar-senha').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const senhaAtual = document.getElementById('senha-atual').value;
+        const novaSenha = document.getElementById('nova-senha').value;
+        const confirmar = document.getElementById('confirmar-senha').value;
+
+        if (novaSenha.length < 4) {
+            showToast('Nova senha deve ter no mínimo 4 caracteres', 'error');
+            return;
+        }
+        if (novaSenha !== confirmar) {
+            showToast('As senhas não coincidem', 'error');
+            return;
+        }
+        await doChangePassword(senhaAtual, novaSenha);
+    });
+
+    // ── Fechar modal ao clicar no fundo ──
+    document.getElementById('modal-senha').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) hideChangePassword();
+    });
+
     // ── Navegação por abas ──
     document.querySelectorAll('.nav-links li').forEach(li => {
         li.addEventListener('click', () => switchTab(li.dataset.tab));
@@ -837,6 +1073,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ── Carregamento inicial ──
-    loadEstoque();
+    // ── Carregamento inicial (feito via checkAuth acima) ──
 });

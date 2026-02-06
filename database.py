@@ -5,6 +5,8 @@ Gerencia conexão, inicialização de tabelas e dados padrão.
 
 import sqlite3
 import os
+import hashlib
+import secrets
 from datetime import datetime
 
 DB_PATH = os.environ.get(
@@ -75,6 +77,25 @@ def init_db():
             faturamento_total REAL NOT NULL DEFAULT 0.0,
             lucro_estimado REAL NOT NULL DEFAULT 0.0
         );
+
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            salt TEXT NOT NULL,
+            nome TEXT NOT NULL DEFAULT '',
+            criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ultimo_login DATETIME
+        );
+
+        CREATE TABLE IF NOT EXISTS sessoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expira_em DATETIME NOT NULL,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+        );
     ''')
 
     # Inicializa registro de estoque se vazio
@@ -83,6 +104,16 @@ def init_db():
         cursor.execute(
             "INSERT INTO estoque (quantidade_total, ultima_atualizacao) VALUES (?, ?)",
             (0, datetime.now().isoformat())
+        )
+
+    # Cria usuário admin padrão se não houver nenhum usuário
+    cursor.execute("SELECT COUNT(*) as count FROM usuarios")
+    if cursor.fetchone()['count'] == 0:
+        salt = secrets.token_hex(32)
+        password_hash = hashlib.sha256(('admin' + salt).encode()).hexdigest()
+        cursor.execute(
+            "INSERT INTO usuarios (username, password_hash, salt, nome) VALUES (?, ?, ?, ?)",
+            ('admin', password_hash, salt, 'Administrador')
         )
 
     conn.commit()

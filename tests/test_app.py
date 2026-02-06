@@ -39,6 +39,12 @@ class BaseTestCase(unittest.TestCase):
         app.config['TESTING'] = True
         self.client = app.test_client()
         init_db()
+        # Auto-login como admin — cookie é preservado pelo test client
+        self.client.post(
+            '/api/auth/login',
+            data=json.dumps({'username': 'admin', 'password': 'admin'}),
+            content_type='application/json'
+        )
 
     def tearDown(self):
         """Remove o banco de dados entre testes."""
@@ -503,6 +509,154 @@ class TestPaginaPrincipal(BaseTestCase):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
         self.assertIn(b'EggVault', res.data)
+
+
+class TestAutenticacao(BaseTestCase):
+    """Testes para o sistema de autenticação."""
+
+    def test_login_valido(self):
+        """Login com credenciais corretas deve retornar token."""
+        # Novo client sem cookie
+        client = app.test_client()
+        res = client.post(
+            '/api/auth/login',
+            data=json.dumps({'username': 'admin', 'password': 'admin'}),
+            content_type='application/json'
+        )
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(data['success'])
+        self.assertIn('token', data['data'])
+        self.assertEqual(data['data']['usuario']['username'], 'admin')
+
+    def test_login_senha_errada(self):
+        """Login com senha errada deve ser rejeitado."""
+        client = app.test_client()
+        res = client.post(
+            '/api/auth/login',
+            data=json.dumps({'username': 'admin', 'password': 'wrongpassword'}),
+            content_type='application/json'
+        )
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 401)
+        self.assertFalse(data['success'])
+
+    def test_login_usuario_inexistente(self):
+        """Login com usuário inexistente deve ser rejeitado."""
+        client = app.test_client()
+        res = client.post(
+            '/api/auth/login',
+            data=json.dumps({'username': 'fazendeiro', 'password': 'abc'}),
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 401)
+
+    def test_endpoint_protegido_sem_auth(self):
+        """Endpoint protegido sem token deve retornar 401."""
+        client = app.test_client()  # Sem login
+        res = client.get('/api/estoque')
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 401)
+        self.assertFalse(data['success'])
+        self.assertTrue(data.get('auth_required'))
+
+    def test_me_retorna_dados_usuario(self):
+        """Endpoint /me deve retornar dados do usuário logado."""
+        res = self.client.get('/api/auth/me')
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(data['success'])
+        self.assertEqual(data['data']['username'], 'admin')
+
+    def test_logout(self):
+        """Logout deve invalidar sessão."""
+        res = self.client.post('/api/auth/logout')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Após logout, me deve falhar
+        res2 = self.client.get('/api/auth/me')
+        self.assertEqual(res2.status_code, 401)
+
+    def test_alterar_senha(self):
+        """Alterar senha deve funcionar com credenciais corretas."""
+        res = self._post_json('/api/auth/alterar-senha', {
+            'senha_atual': 'admin',
+            'nova_senha': 'novasenha123'
+        })
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Login com nova senha deve funcionar
+        client = app.test_client()
+        res2 = client.post(
+            '/api/auth/login',
+            data=json.dumps({'username': 'admin', 'password': 'novasenha123'}),
+            content_type='application/json'
+        )
+        data2 = json.loads(res2.data)
+        self.assertTrue(data2['success'])
+
+    def test_alterar_senha_atual_errada(self):
+        """Alterar senha com senha atual errada deve falhar."""
+        res = self._post_json('/api/auth/alterar-senha', {
+            'senha_atual': 'errada',
+            'nova_senha': 'nova123'
+        })
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(data['success'])
+
+
+class TestExportacao(BaseTestCase):
+    """Testes para exportação em PDF e Excel."""
+
+    def _setup_dados(self):
+        """Cria dados de exemplo para exportação."""
+        self._post_json('/api/entradas', {'quantidade': 100, 'observacao': 'Teste'})
+        self._post_json('/api/precos', {'preco_unitario': 1.50})
+        self._post_json('/api/saidas', {'quantidade': 30})
+        self.client.post('/api/quebrados',
+            data=json.dumps({'quantidade': 5, 'motivo': 'Teste'}),
+            content_type='application/json')
+
+    def test_export_excel_mensal(self):
+        """Exportar Excel mensal deve retornar arquivo .xlsx."""
+        self._setup_dados()
+        from datetime import datetime
+        mes = datetime.now().strftime('%Y-%m')
+        res = self.client.get(f'/api/export/excel?mes={mes}')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('spreadsheet', res.content_type)
+
+    def test_export_pdf_mensal(self):
+        """Exportar PDF mensal deve retornar arquivo .pdf."""
+        self._setup_dados()
+        from datetime import datetime
+        mes = datetime.now().strftime('%Y-%m')
+        res = self.client.get(f'/api/export/pdf?mes={mes}')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('pdf', res.content_type)
+
+    def test_export_excel_anual(self):
+        """Exportar Excel anual deve retornar arquivo .xlsx."""
+        self._setup_dados()
+        from datetime import datetime
+        ano = datetime.now().strftime('%Y')
+        res = self.client.get(f'/api/export/excel-anual?ano={ano}')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('spreadsheet', res.content_type)
+
+    def test_export_sem_dados(self):
+        """Exportar mês sem dados deve funcionar sem erro."""
+        res = self.client.get('/api/export/excel?mes=2020-01')
+        self.assertEqual(res.status_code, 200)
+
+    def test_export_sem_auth(self):
+        """Exportar sem autenticação deve retornar 401."""
+        client = app.test_client()
+        res = client.get('/api/export/excel')
+        self.assertEqual(res.status_code, 401)
 
 
 if __name__ == '__main__':

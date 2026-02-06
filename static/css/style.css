@@ -1027,4 +1027,508 @@ tbody tr:hover {
     .stats-grid {
         grid-template-columns: 1fr;
     }
+
+    .login-card {
+        margin: 12px;
+        padding: 28px 20px;
+    }
+
+    .export-buttons {
+        flex-direction: row;
+        width: 100%;
+    }
+
+    .btn-export {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+/* ═══════════════════════════════════════════
+   TELA DE LOGIN
+   ═══════════════════════════════════════════ */
+
+.login-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+}
+
+.login-overlay.hidden {
+    display: none;
+}
+
+.login-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    animation: loginSlideUp 0.4s ease-out;
+}
+
+@keyframes loginSlideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.login-logo {
+    font-size: 3.5rem;
+    display: block;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+
+.login-header h1 {
+    font-size: 1.75rem;
+    color: var(--text);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+.login-header p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+.login-card .form-group {
+    margin-bottom: 18px;
+}
+
+.login-card label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.login-card label i {
+    margin-right: 4px;
+    color: var(--primary);
+}
+
+.login-card input[type="text"],
+.login-card input[type="password"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    transition: var(--transition);
+    background: var(--bg);
+}
+
+.login-card input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.password-wrapper {
+    position: relative;
+}
+
+.password-wrapper input {
+    padding-right: 44px !important;
+}
+
+.btn-toggle-password {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    font-size: 1rem;
+    transition: var(--transition);
+    border-radius: 50%;
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-toggle-password:hover {
+    color: var(--primary);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.login-error {
+    background: var(--danger-light);
+    color: var(--danger-dark);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}
+
+.btn-login {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-top: 8px;
+    min-height: 48px;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 20px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.login-footer strong {
+    color: var(--primary);
+}
+
+/* ═══════════════════════════════════════════
+   MODAL ALTERAR SENHA
+   ═══════════════════════════════════════════ */
+
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 16px;
+    backdrop-filter: blur(4px);
+}
+
+.modal-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: var(--shadow-lg);
+    animation: loginSlideUp 0.3s ease-out;
+}
+
+.modal-card h3 {
+    font-size: 1.2rem;
+    color: var(--text);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-card h3 i {
+    color: var(--warning);
+}
+
+.modal-card .form-group {
+    margin-bottom: 16px;
+}
+
+.modal-card label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.modal-card input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    background: var(--bg);
+    transition: var(--transition);
+}
+
+.modal-card input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.btn-icon-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-icon-text:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: var(--danger-light);
+}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR — SEÇÃO USUÁRIO
+   ═══════════════════════════════════════════ */
+
+.sidebar-user {
+    padding: 12px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.88rem;
+    font-weight: 500;
+    min-width: 0;
+}
+
+.user-info i {
+    font-size: 1.3rem;
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+
+.user-info span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.btn-sidebar-action {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: rgba(255, 255, 255, 0.65);
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.85rem;
+}
+
+.btn-sidebar-action:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+}
+
+.btn-sidebar-action.btn-logout:hover {
+    background: rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+}
+
+/* ═══════════════════════════════════════════
+   BOTÕES DE EXPORTAÇÃO
+   ═══════════════════════════════════════════ */
+
+.export-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.btn-export:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-export i {
+    font-size: 1rem;
+}
+
+.btn-export-excel {
+    border-color: #059669;
+    color: #059669;
+}
+
+.btn-export-excel:hover {
+    background: #d1fae5;
+    border-color: #10b981;
+}
+
+.btn-export-pdf {
+    border-color: #dc2626;
+    color: #dc2626;
+}
+
+.btn-export-pdf:hover {
+    background: #fee2e2;
+    border-color: #ef4444;
+}
+
+.btn-export-anual {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-export-anual:hover {
+    background: #e0e7ff;
+    border-color: var(--primary-dark);
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE UX ENHANCEMENTS
+   ═══════════════════════════════════════════ */
+
+/* Smooth touch scrolling everywhere */
+.tab-content, .table-wrapper, .main-content {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Better tap targets — minimum 44px for all interactive elements */
+@media (pointer: coarse) {
+    input, select, button, .nav-links li {
+        min-height: 44px;
+    }
+
+    .btn {
+        min-height: 44px;
+        padding: 12px 20px;
+    }
+
+    select {
+        padding: 10px 12px;
+    }
+}
+
+/* Pull-to-refresh prevention on main scrollable */
+body {
+    overscroll-behavior-y: contain;
+}
+
+/* Safe area insets for notched devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .sidebar {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .main-content {
+        padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+
+    .login-overlay {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* Disable text selection on interactive elements for mobile */
+.btn, .btn-undo, .btn-export, .btn-sidebar-action, .nav-links li {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Mobile-specific login adjustments */
+@media (max-width: 768px) {
+    .login-card {
+        padding: 32px 24px;
+    }
+
+    .login-logo {
+        font-size: 3rem;
+    }
+
+    .login-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .export-buttons {
+        width: 100%;
+    }
+
+    .btn-export {
+        flex: 1;
+        justify-content: center;
+        padding: 10px 12px;
+    }
+
+    .modal-card {
+        padding: 24px 20px;
+        margin: 12px;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+    }
+
+    .modal-actions .btn,
+    .modal-actions .btn-icon-text {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Report filters: stack export buttons below */
+    .report-filters {
+        gap: 10px;
+    }
 }

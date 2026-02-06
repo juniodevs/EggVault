@@ -3,7 +3,8 @@
 Servidor Flask com API REST e interface web SPA.
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
+from functools import wraps
 from database import init_db, get_connection
 from services.estoque_service import EstoqueService
 from services.entrada_service import EntradaService
@@ -11,9 +12,32 @@ from services.saida_service import SaidaService
 from services.preco_service import PrecoService
 from services.relatorio_service import RelatorioService
 from services.quebrado_service import QuebradoService
+from services.auth_service import AuthService
+from services.export_service import ExportService
 from datetime import datetime
 
 app = Flask(__name__)
+
+
+# ═══════════════════════════════════════════
+# MIDDLEWARE DE AUTENTICAÇÃO
+# ═══════════════════════════════════════════
+
+def login_required(f):
+    """Decorator que exige autenticação via token."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        if not token:
+            token = request.cookies.get('auth_token', '')
+
+        usuario = AuthService.validar_token(token)
+        if not usuario:
+            return jsonify({'success': False, 'error': 'Não autenticado', 'auth_required': True}), 401
+
+        request.usuario = usuario
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ═══════════════════════════════════════════
@@ -27,10 +51,92 @@ def index():
 
 
 # ═══════════════════════════════════════════
+# API — AUTENTICAÇÃO
+# ═══════════════════════════════════════════
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    """Autentica usuário e retorna token."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
+
+        username = data.get('username', '')
+        password = data.get('password', '')
+        result = AuthService.login(username, password)
+
+        response = jsonify({'success': True, 'data': result})
+        response.set_cookie(
+            'auth_token', result['token'],
+            httponly=True, samesite='Strict', max_age=72*3600
+        )
+        return response
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 401
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/me', methods=['GET'])
+def auth_me():
+    """Retorna dados do usuário logado (verifica se sessão é válida)."""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token:
+        token = request.cookies.get('auth_token', '')
+
+    usuario = AuthService.validar_token(token)
+    if not usuario:
+        return jsonify({'success': False, 'error': 'Não autenticado', 'auth_required': True}), 401
+
+    return jsonify({'success': True, 'data': usuario})
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def auth_logout():
+    """Encerra sessão do usuário."""
+    try:
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        if not token:
+            token = request.cookies.get('auth_token', '')
+
+        AuthService.logout(token)
+        response = jsonify({'success': True, 'message': 'Logout realizado'})
+        response.delete_cookie('auth_token')
+        return response
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/alterar-senha', methods=['POST'])
+@login_required
+def auth_alterar_senha():
+    """Altera a senha do usuário logado."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
+
+        AuthService.alterar_senha(
+            request.usuario['id'],
+            data.get('senha_atual', ''),
+            data.get('nova_senha', '')
+        )
+        response = jsonify({'success': True, 'message': 'Senha alterada com sucesso'})
+        response.delete_cookie('auth_token')
+        return response
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ═══════════════════════════════════════════
 # API — ESTOQUE
 # ═══════════════════════════════════════════
 
 @app.route('/api/estoque', methods=['GET'])
+@login_required
 def get_estoque():
     """Retorna o estoque atual com indicador de status."""
     try:
@@ -45,6 +151,7 @@ def get_estoque():
 # ═══════════════════════════════════════════
 
 @app.route('/api/entradas', methods=['GET'])
+@login_required
 def get_entradas():
     """Lista entradas filtradas por mês."""
     try:
@@ -56,6 +163,7 @@ def get_entradas():
 
 
 @app.route('/api/entradas', methods=['POST'])
+@login_required
 def add_entrada():
     """Registra uma nova entrada de ovos."""
     try:
@@ -82,6 +190,7 @@ def add_entrada():
 # ═══════════════════════════════════════════
 
 @app.route('/api/entradas/<int:entry_id>', methods=['DELETE'])
+@login_required
 def delete_entrada(entry_id):
     """Remove uma entrada e subtrai do estoque."""
     try:
@@ -101,6 +210,7 @@ def delete_entrada(entry_id):
 # ═══════════════════════════════════════════
 
 @app.route('/api/saidas', methods=['GET'])
+@login_required
 def get_saidas():
     """Lista vendas filtradas por mês."""
     try:
@@ -112,6 +222,7 @@ def get_saidas():
 
 
 @app.route('/api/saidas', methods=['POST'])
+@login_required
 def add_saida():
     """Registra uma nova venda de ovos."""
     try:
@@ -137,6 +248,7 @@ def add_saida():
 
 
 @app.route('/api/saidas/<int:sale_id>', methods=['DELETE'])
+@login_required
 def delete_saida(sale_id):
     """Remove uma venda e devolve ovos ao estoque."""
     try:
@@ -156,6 +268,7 @@ def delete_saida(sale_id):
 # ═══════════════════════════════════════════
 
 @app.route('/api/precos', methods=['GET'])
+@login_required
 def get_precos():
     """Retorna o histórico de preços."""
     try:
@@ -166,6 +279,7 @@ def get_precos():
 
 
 @app.route('/api/precos/ativo', methods=['GET'])
+@login_required
 def get_preco_ativo():
     """Retorna o preço ativo atual."""
     try:
@@ -176,6 +290,7 @@ def get_preco_ativo():
 
 
 @app.route('/api/precos', methods=['POST'])
+@login_required
 def set_preco():
     """Define um novo preço ativo."""
     try:
@@ -201,6 +316,7 @@ def set_preco():
 # ═══════════════════════════════════════════
 
 @app.route('/api/quebrados', methods=['GET'])
+@login_required
 def get_quebrados():
     """Lista registros de ovos quebrados filtrados por mês."""
     try:
@@ -212,6 +328,7 @@ def get_quebrados():
 
 
 @app.route('/api/quebrados', methods=['POST'])
+@login_required
 def add_quebrado():
     """Registra ovos quebrados (perda)."""
     try:
@@ -234,6 +351,7 @@ def add_quebrado():
 
 
 @app.route('/api/quebrados/<int:entry_id>', methods=['DELETE'])
+@login_required
 def delete_quebrado(entry_id):
     """Remove um registro de quebrado e devolve ao estoque."""
     try:
@@ -253,6 +371,7 @@ def delete_quebrado(entry_id):
 # ═══════════════════════════════════════════
 
 @app.route('/api/relatorio', methods=['GET'])
+@login_required
 def get_relatorio():
     """Retorna o resumo mensal."""
     try:
@@ -264,6 +383,7 @@ def get_relatorio():
 
 
 @app.route('/api/relatorio/anual', methods=['GET'])
+@login_required
 def get_relatorio_anual():
     """Retorna os dados anuais para gráficos."""
     try:
@@ -275,6 +395,7 @@ def get_relatorio_anual():
 
 
 @app.route('/api/meses', methods=['GET'])
+@login_required
 def get_meses():
     """Retorna a lista de meses com dados registrados."""
     try:
@@ -298,6 +419,64 @@ def get_meses():
             meses.insert(0, current)
 
         return jsonify({'success': True, 'data': meses})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ═══════════════════════════════════════════
+# API — EXPORTAÇÃO (PDF / Excel)
+# ═══════════════════════════════════════════
+
+@app.route('/api/export/excel', methods=['GET'])
+@login_required
+def export_excel():
+    """Exporta relatório mensal em Excel."""
+    try:
+        mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        output = ExportService.exportar_excel(mes)
+        filename = f'EggVault_Relatorio_{mes}.xlsx'
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/export/pdf', methods=['GET'])
+@login_required
+def export_pdf():
+    """Exporta relatório mensal em PDF."""
+    try:
+        mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        output = ExportService.exportar_pdf(mes)
+        filename = f'EggVault_Relatorio_{mes}.pdf'
+        return send_file(
+            output,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/export/excel-anual', methods=['GET'])
+@login_required
+def export_excel_anual():
+    """Exporta resumo anual em Excel."""
+    try:
+        ano = request.args.get('ano', datetime.now().strftime('%Y'))
+        output = ExportService.exportar_excel_anual(ano)
+        filename = f'EggVault_Anual_{ano}.xlsx'
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
