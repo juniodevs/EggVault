@@ -78,6 +78,25 @@ def add_entrada():
 
 
 # ═══════════════════════════════════════════
+# API — ENTRADAS (DELETE)
+# ═══════════════════════════════════════════
+
+@app.route('/api/entradas/<int:entry_id>', methods=['DELETE'])
+def delete_entrada(entry_id):
+    """Remove uma entrada e subtrai do estoque."""
+    try:
+        quantidade = EntradaService.remover(entry_id)
+        return jsonify({
+            'success': True,
+            'message': f'{quantidade} ovos removidos do estoque'
+        })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ═══════════════════════════════════════════
 # API — SAÍDAS / VENDAS
 # ═══════════════════════════════════════════
 
@@ -110,6 +129,21 @@ def add_saida():
             'success': True,
             'id': sale_id,
             'message': f'{quantidade} ovos vendidos com sucesso'
+        })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/saidas/<int:sale_id>', methods=['DELETE'])
+def delete_saida(sale_id):
+    """Remove uma venda e devolve ovos ao estoque."""
+    try:
+        quantidade = SaidaService.remover(sale_id)
+        return jsonify({
+            'success': True,
+            'message': f'{quantidade} ovos devolvidos ao estoque'
         })
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400

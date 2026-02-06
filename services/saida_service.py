@@ -56,6 +56,28 @@ class SaidaService:
         return sale_id
 
     @staticmethod
+    def remover(sale_id):
+        """
+        Remove uma venda — devolve ovos ao estoque.
+
+        Args:
+            sale_id: ID da venda a remover.
+
+        Returns:
+            Quantidade devolvida ao estoque.
+
+        Raises:
+            ValueError: Se a venda não for encontrada.
+        """
+        quantidade = SaidaRepository.delete(sale_id)
+        EstoqueService.atualizar(quantidade, 'add')
+
+        mes_ref = datetime.now().strftime('%Y-%m')
+        RelatorioService.atualizar_resumo(mes_ref)
+
+        return quantidade
+
+    @staticmethod
     def listar(mes_referencia=None):
         """Lista saídas de um mês. Padrão: mês atual."""
         if mes_referencia is None:

@@ -146,6 +146,48 @@ class TestEntradas(BaseTestCase):
         data = json.loads(res.data)
         self.assertEqual(data['data']['quantidade_total'], 150)
 
+    def test_desfazer_entrada(self):
+        """Desfazer entrada deve subtrair ovos do estoque."""
+        r1 = self._post_json('/api/entradas', {'quantidade': 80})
+        d1 = json.loads(r1.data)
+        entry_id = d1['id']
+
+        # Verificar estoque aumentou
+        est1 = json.loads(self.client.get('/api/estoque').data)
+        self.assertEqual(est1['data']['quantidade_total'], 80)
+
+        # Desfazer entrada
+        res = self.client.delete(f'/api/entradas/{entry_id}')
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Verificar estoque zerado
+        est2 = json.loads(self.client.get('/api/estoque').data)
+        self.assertEqual(est2['data']['quantidade_total'], 0)
+
+    def test_desfazer_entrada_estoque_insuficiente(self):
+        """Desfazer entrada deve falhar se estoque ficaria negativo."""
+        # Adicionar 50, vender 30, tentar desfazer entrada de 50
+        self._post_json('/api/entradas', {'quantidade': 50})
+        self._post_json('/api/precos', {'preco_unitario': 1.00})
+        self._post_json('/api/saidas', {'quantidade': 30})
+
+        # Estoque = 20; desfazer entrada de 50 impossível
+        res = self.client.get('/api/entradas?mes=' + __import__('datetime').datetime.now().strftime('%Y-%m'))
+        entradas = json.loads(res.data)['data']
+        entry_id = entradas[0]['id']
+
+        res = self.client.delete(f'/api/entradas/{entry_id}')
+        self.assertEqual(res.status_code, 400)
+
+    def test_desfazer_entrada_inexistente(self):
+        """Desfazer entrada inexistente deve retornar erro."""
+        res = self.client.delete('/api/entradas/99999')
+        self.assertEqual(res.status_code, 400)
+        data = json.loads(res.data)
+        self.assertFalse(data['success'])
+
 
 class TestVendas(BaseTestCase):
     """Testes para a funcionalidade de Vendas."""
@@ -205,6 +247,35 @@ class TestVendas(BaseTestCase):
         """Deve rejeitar venda com quantidade inválida."""
         self._setup_estoque_e_preco()
         res = self._post_json('/api/saidas', {'quantidade': -5})
+        data = json.loads(res.data)
+        self.assertFalse(data['success'])
+
+    def test_desfazer_venda(self):
+        """Desfazer venda deve devolver ovos ao estoque."""
+        self._setup_estoque_e_preco(100, 1.50)
+        # Registrar venda
+        r1 = self._post_json('/api/saidas', {'quantidade': 30})
+        d1 = json.loads(r1.data)
+        sale_id = d1['id']
+
+        # Verificar estoque reduziu
+        est1 = json.loads(self.client.get('/api/estoque').data)
+        self.assertEqual(est1['data']['quantidade_total'], 70)
+
+        # Desfazer venda
+        res = self.client.delete(f'/api/saidas/{sale_id}')
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Verificar estoque restaurado
+        est2 = json.loads(self.client.get('/api/estoque').data)
+        self.assertEqual(est2['data']['quantidade_total'], 100)
+
+    def test_desfazer_venda_inexistente(self):
+        """Desfazer venda inexistente deve retornar erro."""
+        res = self.client.delete('/api/saidas/99999')
+        self.assertEqual(res.status_code, 400)
         data = json.loads(res.data)
         self.assertFalse(data['success'])
 

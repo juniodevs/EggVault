@@ -508,23 +508,34 @@ body {
 
 .btn-undo {
     background: none;
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--border);
     color: var(--text-secondary);
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-radius: var(--radius-sm);
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    white-space: nowrap;
+    min-height: 40px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .btn-undo:hover {
-    background: var(--success-light);
-    color: var(--success-dark);
-    border-color: var(--success);
+    background: var(--danger-light);
+    color: var(--danger-dark);
+    border-color: var(--danger);
+}
+
+.btn-undo:active {
+    transform: scale(0.95);
+    background: var(--danger-light);
+    color: var(--danger-dark);
+    border-color: var(--danger);
 }
 
 /* ─── Current Price Display ─── */
@@ -980,6 +991,35 @@ tbody tr:hover {
 
     .toast {
         max-width: 100%;
+    }
+
+    /* Botão desfazer mobile: só ícone, maior area de toque */
+    .btn-undo {
+        padding: 10px 12px;
+        min-height: 44px;
+        min-width: 44px;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 0.95rem;
+    }
+
+    .btn-undo .btn-undo-label {
+        display: none;
+    }
+
+    /* Tabelas mobile: scroll horizontal suave */
+    .table-wrapper {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    tbody td {
+        padding: 12px 10px;
+        font-size: 0.82rem;
+    }
+
+    thead th {
+        padding: 10px;
+        font-size: 0.75rem;
     }
 }
 

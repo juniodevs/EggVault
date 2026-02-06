@@ -200,7 +200,7 @@ async function loadEntradas() {
 
         if (res.data.length === 0) {
             tbody.innerHTML =
-                '<tr><td colspan="3" class="empty-state">Nenhuma entrada registrada neste mês</td></tr>';
+                '<tr><td colspan="4" class="empty-state">Nenhuma entrada registrada neste mês</td></tr>';
             return;
         }
 
@@ -209,6 +209,11 @@ async function loadEntradas() {
                 <td>${formatDate(e.data)}</td>
                 <td><strong>${e.quantidade}</strong> ovos</td>
                 <td>${e.observacao || '—'}</td>
+                <td>
+                    <button class="btn-undo" onclick="undoEntrada(${e.id}, ${e.quantidade})" title="Desfazer — remover do estoque">
+                        <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
+                    </button>
+                </td>
             </tr>
         `).join('');
 
@@ -247,7 +252,7 @@ async function loadVendas() {
 
         if (res.data.length === 0) {
             tbody.innerHTML =
-                '<tr><td colspan="4" class="empty-state">Nenhuma venda registrada neste mês</td></tr>';
+                '<tr><td colspan="5" class="empty-state">Nenhuma venda registrada neste mês</td></tr>';
             return;
         }
 
@@ -257,6 +262,11 @@ async function loadVendas() {
                 <td><strong>${s.quantidade}</strong></td>
                 <td>${formatCurrency(s.preco_unitario)}</td>
                 <td><strong>${formatCurrency(s.valor_total)}</strong></td>
+                <td>
+                    <button class="btn-undo" onclick="undoVenda(${s.id}, ${s.quantidade})" title="Desfazer — devolver ao estoque">
+                        <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
+                    </button>
+                </td>
             </tr>
         `).join('');
 
@@ -305,8 +315,8 @@ async function loadQuebrados() {
                 <td><strong>${q.quantidade}</strong> ovos</td>
                 <td>${q.motivo || '—'}</td>
                 <td>
-                    <button class="btn-undo" onclick="undoQuebrado(${q.id})" title="Desfazer — devolver ao estoque">
-                        <i class="fas fa-undo"></i> Desfazer
+                    <button class="btn-undo" onclick="undoQuebrado(${q.id}, ${q.quantidade})" title="Desfazer — devolver ao estoque">
+                        <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
                     </button>
                 </td>
             </tr>
@@ -317,11 +327,34 @@ async function loadQuebrados() {
     }
 }
 
-async function undoQuebrado(entryId) {
+async function undoQuebrado(entryId, quantidade) {
+    if (!confirm(`Desfazer registro de ${quantidade} ovo(s) quebrado(s)?\nOs ovos serão devolvidos ao estoque.`)) return;
     try {
         const res = await api(`/api/quebrados/${entryId}`, { method: 'DELETE' });
         showToast(res.message, 'success');
         await loadQuebrados();
+    } catch (e) {
+        // Toast já exibido
+    }
+}
+
+async function undoVenda(saleId, quantidade) {
+    if (!confirm(`Desfazer venda de ${quantidade} ovo(s)?\nOs ovos serão devolvidos ao estoque.`)) return;
+    try {
+        const res = await api(`/api/saidas/${saleId}`, { method: 'DELETE' });
+        showToast(res.message, 'success');
+        await loadVendas();
+    } catch (e) {
+        // Toast já exibido
+    }
+}
+
+async function undoEntrada(entryId, quantidade) {
+    if (!confirm(`Desfazer entrada de ${quantidade} ovo(s)?\nOs ovos serão removidos do estoque.`)) return;
+    try {
+        const res = await api(`/api/entradas/${entryId}`, { method: 'DELETE' });
+        showToast(res.message, 'success');
+        await loadEntradas();
     } catch (e) {
         // Toast já exibido
     }
