@@ -13,15 +13,12 @@ import time
 import tempfile
 import threading
 import pytest
+import importlib
 from playwright.sync_api import sync_playwright
 
 # ── Caminho do projeto ────────────────────────────────────────────────────
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT_DIR)
-
-# ── Banco de dados isolado para testes E2E ────────────────────────────────
-TEST_DB_PATH = os.path.join(tempfile.gettempdir(), "ovos_e2e_test.db")
-os.environ["OVOS_DB_PATH"] = TEST_DB_PATH
 
 # ── Configurações (importadas do arquivo na raiz do projeto) ──────────────
 # Valores padrão caso o import falhe
@@ -41,7 +38,6 @@ try:
     if ROOT_DIR not in sys.path:
         sys.path.insert(0, ROOT_DIR)
     import playwright_config as _cfg
-    BASE_URL = getattr(_cfg, "BASE_URL", BASE_URL)
     DEFAULT_TIMEOUT = getattr(_cfg, "DEFAULT_TIMEOUT", DEFAULT_TIMEOUT)
     NAVIGATION_TIMEOUT = getattr(_cfg, "NAVIGATION_TIMEOUT", NAVIGATION_TIMEOUT)
     HEADLESS = getattr(_cfg, "HEADLESS", HEADLESS)
@@ -60,10 +56,10 @@ except ImportError as e:
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _cleanup_db():
+def _cleanup_db(db_path):
     """Remove arquivos do banco de teste."""
     for suffix in ["", "-wal", "-shm"]:
-        path = TEST_DB_PATH + suffix
+        path = db_path + suffix
         if os.path.exists(path):
             try:
                 os.remove(path)
@@ -71,16 +67,19 @@ def _cleanup_db():
                 pass
 
 
-def _start_flask_server():
+def _start_flask_server(port, db_path):
     """Inicia o servidor Flask em uma thread daemon."""
+    os.environ["OVOS_DB_PATH"] = db_path
+    
+    import database
+    importlib.reload(database)
+    
     from app import app
-    from database import init_db
-
-    init_db()
+    
+    database.init_db()
     app.config["TESTING"] = True
 
-    # Werkzeug em thread daemon — morre automaticamente quando o processo principal sai
-    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+    app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
 
 
 def _wait_for_server(url, timeout=10):
@@ -103,17 +102,53 @@ def _wait_for_server(url, timeout=10):
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.fixture(scope="session")
-def live_server():
-    """Inicia o servidor Flask uma vez por sessão de testes."""
-    _cleanup_db()
+def worker_config(worker_id):
+    """Define porta e banco de dados únicos por worker (processo de teste)."""
+    if worker_id == "master":
+        port = 5000
+        db_name = "ovos_test_master.db"
+    else:
+        # worker_id ex: gw0, gw1...
+        # Mapeia gw0 -> 5001, gw1 -> 5002, etc.
+        try:
+            suffix = worker_id.replace("gw", "")
+            port = 5001 + int(suffix)
+        except ValueError:
+            port = 5001 # Fallback
+        db_name = f"ovos_test_{worker_id}.db"
 
-    server_thread = threading.Thread(target=_start_flask_server, daemon=True)
+    db_path = os.path.join(tempfile.gettempdir(), db_name)
+    base_url = f"http://localhost:{port}"
+    
+    return {
+        "port": port,
+        "db_path": db_path,
+        "base_url": base_url
+    }
+
+
+@pytest.fixture(scope="session")
+def live_server(worker_config):
+    """Inicia o servidor Flask uma vez por sessão de testes (por worker)."""
+    port = worker_config["port"]
+    db_path = worker_config["db_path"]
+    base_url = worker_config["base_url"]
+    
+    _cleanup_db(db_path)
+
+    server_thread = threading.Thread(
+        target=_start_flask_server, 
+        args=(port, db_path), 
+        daemon=True
+    )
     server_thread.start()
-    _wait_for_server(BASE_URL)
+    
+    _wait_for_server(base_url)
 
-    yield BASE_URL
+    yield base_url
 
-    _cleanup_db()
+    _cleanup_db(db_path)
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════

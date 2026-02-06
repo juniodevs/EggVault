@@ -25,7 +25,7 @@ ACTION_TIMEOUT = 10000
 # ═══════════════════════════════════════════
 # BROWSER OPTIONS
 # ═══════════════════════════════════════════
-HEADLESS = False
+HEADLESS = True
 SLOW_MO = 150  # ms entre ações (útil para debug: 100-500)
 VIEWPORT = {"width": 1280, "height": 720}
 
