@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🥚 Egg Manager — Gerenciamento de Ovos</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥚</text></svg>">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="logo">🥚</span>
+            <h2>Egg Manager</h2>
+        </div>
+
+        <ul class="nav-links">
+            <li class="active" data-tab="estoque">
+                <i class="fas fa-warehouse"></i>
+                <span>Estoque</span>
+            </li>
+            <li data-tab="entradas">
+                <i class="fas fa-arrow-circle-down"></i>
+                <span>Entradas</span>
+            </li>
+            <li data-tab="vendas">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Vendas</span>
+            </li>
+            <li data-tab="quebrados">
+                <i class="fas fa-heart-crack"></i>
+                <span>Quebrados</span>
+            </li>
+            <li data-tab="precos">
+                <i class="fas fa-tags"></i>
+                <span>Preços</span>
+            </li>
+            <li data-tab="relatorios">
+                <i class="fas fa-chart-pie"></i>
+                <span>Relatórios</span>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <small>© 2026 Egg Manager</small>
+        </div>
+    </nav>
+
+    <!-- ═══════════ BOTÃO MOBILE ═══════════ -->
+    <button class="mobile-menu-btn" id="mobile-menu-btn">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- ═══════════════════════════ CONTEÚDO PRINCIPAL ═══════════════════════════ -->
+    <main class="main-content">
+
+        <!-- ══════════ ABA: ESTOQUE ══════════ -->
+        <section id="tab-estoque" class="tab-content active">
+            <div class="page-header">
+                <h1><i class="fas fa-warehouse"></i> Estoque</h1>
+                <p class="subtitle">Visão geral do estoque de ovos</p>
+            </div>
+
+            <div class="stock-display">
+                <div class="stock-card" id="stock-main-card">
+                    <div class="stock-icon">🥚</div>
+                    <div class="stock-info">
+                        <span class="stock-label">Estoque Atual</span>
+                        <span class="stock-value" id="stock-quantity">0</span>
+                        <span class="stock-unit">unidades</span>
+                    </div>
+                    <div class="stock-indicator" id="stock-indicator">
+                        <span class="indicator-text">Carregando...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i class="fas fa-arrow-circle-down stat-icon entrada"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-entradas-mes">0</span>
+                        <span class="stat-label">Entradas este mês</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-shopping-cart stat-icon saida"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-saidas-mes">0</span>
+                        <span class="stat-label">Saídas este mês</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-heart-crack stat-icon quebrado"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-quebrados-mes">0</span>
+                        <span class="stat-label">Quebrados este mês</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-dollar-sign stat-icon faturamento"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-faturamento-mes">R$ 0,00</span>
+                        <span class="stat-label">Faturamento este mês</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-tag stat-icon preco"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-preco-atual">R$ 0,00</span>
+                        <span class="stat-label">Preço atual / ovo</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="last-update" id="last-update">
+                Última atualização: —
+            </div>
+        </section>
+
+        <!-- ══════════ ABA: ENTRADAS ══════════ -->
+        <section id="tab-entradas" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-arrow-circle-down"></i> Entrada de Ovos</h1>
+                <p class="subtitle">Registre a entrada de novos ovos no estoque</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card form-card">
+                    <h3><i class="fas fa-plus-circle"></i> Nova Entrada</h3>
+                    <form id="form-entrada">
+                        <div class="form-group">
+                            <label for="entrada-quantidade">Quantidade de Ovos</label>
+                            <input type="number" id="entrada-quantidade" min="1" step="1" required placeholder="Ex: 30">
+                        </div>
+                        <div class="form-group">
+                            <label for="entrada-observacao">Observação (opcional)</label>
+                            <textarea id="entrada-observacao" rows="3" placeholder="Ex: Coleta da manhã..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check"></i> Registrar Entrada
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-list"></i> Entradas Recentes</h3>
+                        <div class="month-filter">
+                            <button class="btn btn-icon" onclick="changeMonth('entradas', -1)"><i class="fas fa-chevron-left"></i></button>
+                            <span id="entradas-month-label" class="month-label">—</span>
+                            <button class="btn btn-icon" onclick="changeMonth('entradas', 1)"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Quantidade</th>
+                                    <th>Observação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="entradas-list">
+                                <tr><td colspan="3" class="empty-state">Nenhuma entrada registrada</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════ ABA: VENDAS ══════════ -->
+        <section id="tab-vendas" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-shopping-cart"></i> Vendas / Saídas</h1>
+                <p class="subtitle">Registre a venda ou saída de ovos</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card form-card">
+                    <h3><i class="fas fa-cash-register"></i> Nova Venda</h3>
+                    <div class="stock-info-bar" id="venda-stock-info">
+                        <i class="fas fa-warehouse"></i>
+                        Estoque disponível: <strong id="venda-stock-qty">0</strong> ovos
+                    </div>
+                    <form id="form-venda">
+                        <div class="form-group">
+                            <label for="venda-quantidade">Quantidade</label>
+                            <input type="number" id="venda-quantidade" min="1" step="1" required placeholder="Ex: 12">
+                        </div>
+                        <div class="form-group">
+                            <label for="venda-preco">Preço Unitário (R$)</label>
+                            <input type="number" id="venda-preco" step="0.01" min="0" required placeholder="0,00">
+                        </div>
+                        <div class="form-group">
+                            <label>Valor Total</label>
+                            <div class="total-display" id="venda-total">R$ 0,00</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check"></i> Registrar Venda
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-list"></i> Vendas Recentes</h3>
+                        <div class="month-filter">
+                            <button class="btn btn-icon" onclick="changeMonth('vendas', -1)"><i class="fas fa-chevron-left"></i></button>
+                            <span id="vendas-month-label" class="month-label">—</span>
+                            <button class="btn btn-icon" onclick="changeMonth('vendas', 1)"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Qtd</th>
+                                    <th>Preço Unit.</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendas-list">
+                                <tr><td colspan="4" class="empty-state">Nenhuma venda registrada</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════ ABA: QUEBRADOS ══════════ -->
+        <section id="tab-quebrados" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-heart-crack"></i> Ovos Quebrados</h1>
+                <p class="subtitle">Registre perdas de ovos quebrados</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card form-card">
+                    <h3><i class="fas fa-plus-circle"></i> Registrar Perda</h3>
+                    <div class="stock-info-bar stock-info-bar-danger" id="quebrado-stock-info">
+                        <i class="fas fa-warehouse"></i>
+                        Estoque disponível: <strong id="quebrado-stock-qty">0</strong> ovos
+                    </div>
+                    <form id="form-quebrado">
+                        <div class="form-group">
+                            <label for="quebrado-quantidade">Quantidade Quebrada</label>
+                            <input type="number" id="quebrado-quantidade" min="1" step="1" required placeholder="Ex: 5">
+                        </div>
+                        <div class="form-group">
+                            <label for="quebrado-motivo">Motivo (opcional)</label>
+                            <textarea id="quebrado-motivo" rows="3" placeholder="Ex: Caíram durante o transporte..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-heart-crack"></i> Registrar Quebra
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-list"></i> Registros de Quebra</h3>
+                        <div class="month-filter">
+                            <button class="btn btn-icon" onclick="changeMonth('quebrados', -1)"><i class="fas fa-chevron-left"></i></button>
+                            <span id="quebrados-month-label" class="month-label">—</span>
+                            <button class="btn btn-icon" onclick="changeMonth('quebrados', 1)"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="quebrados-total-bar">
+                        <i class="fas fa-heart-crack"></i>
+                        Total quebrados neste mês: <strong id="quebrados-month-total">0</strong> ovos
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Quantidade</th>
+                                    <th>Motivo</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="quebrados-list">
+                                <tr><td colspan="4" class="empty-state">Nenhum registro de quebra</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════ ABA: PREÇOS ══════════ -->
+        <section id="tab-precos" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-tags"></i> Preços</h1>
+                <p class="subtitle">Gerencie o preço unitário dos ovos</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card form-card">
+                    <h3><i class="fas fa-edit"></i> Definir Preço</h3>
+                    <div class="current-price-display">
+                        <span class="price-label">Preço Atual</span>
+                        <span class="price-value" id="current-price">R$ 0,00</span>
+                    </div>
+                    <form id="form-preco">
+                        <div class="form-group">
+                            <label for="novo-preco">Novo Preço Unitário (R$)</label>
+                            <input type="number" id="novo-preco" step="0.01" min="0" required placeholder="0,00">
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-save"></i> Atualizar Preço
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card list-card">
+                    <h3><i class="fas fa-history"></i> Histórico de Preços</h3>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Preço Unitário</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="precos-list">
+                                <tr><td colspan="3" class="empty-state">Nenhum preço definido</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════ ABA: RELATÓRIOS ══════════ -->
+        <section id="tab-relatorios" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-chart-pie"></i> Relatórios &amp; Gráficos</h1>
+                <p class="subtitle">Análise detalhada de produção e vendas</p>
+            </div>
+
+            <div class="report-filters">
+                <div class="filter-group">
+                    <label for="report-month">Mês</label>
+                    <select id="report-month"></select>
+                </div>
+                <div class="filter-group">
+                    <label for="report-year">Ano</label>
+                    <select id="report-year"></select>
+                </div>
+                <button class="btn btn-primary" onclick="loadReport()">
+                    <i class="fas fa-search"></i> Gerar Relatório
+                </button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i class="fas fa-arrow-circle-down stat-icon entrada"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="report-entradas">0</span>
+                        <span class="stat-label">Total Entradas</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-shopping-cart stat-icon saida"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="report-saidas">0</span>
+                        <span class="stat-label">Total Vendido</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-heart-crack stat-icon quebrado"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="report-quebrados">0</span>
+                        <span class="stat-label">Total Quebrados</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-dollar-sign stat-icon faturamento"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="report-faturamento">R$ 0,00</span>
+                        <span class="stat-label">Total Faturado</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-balance-scale stat-icon preco"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="report-saldo">0</span>
+                        <span class="stat-label">Saldo do Mês (ovos)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="card chart-card">
+                    <h3><i class="fas fa-chart-bar"></i> Entradas vs Saídas</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-entradas-saidas"></canvas>
+                    </div>
+                </div>
+                <div class="card chart-card">
+                    <h3><i class="fas fa-chart-line"></i> Faturamento Mensal</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-faturamento"></canvas>
+                    </div>
+                </div>
+                <div class="card chart-card chart-card-small">
+                    <h3><i class="fas fa-chart-pie"></i> Distribuição do Ano</h3>
+                    <div class="chart-container chart-container-pie">
+                        <canvas id="chart-distribuicao"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ═══════════ TOAST CONTAINER ═══════════ -->
+    <div id="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
