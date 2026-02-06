@@ -52,16 +52,6 @@ class QuebradoRepository:
         return result['total']
 
     @staticmethod
-    def get_total_all():
-        """Retorna o total geral de ovos quebrados (todas as datas)."""
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COALESCE(SUM(quantidade), 0) as total FROM quebrados")
-        result = cursor.fetchone()
-        conn.close()
-        return result['total']
-
-    @staticmethod
     def delete(entry_id):
         """Remove um registro de quebrado pelo ID e retorna a quantidade."""
         conn = get_connection()

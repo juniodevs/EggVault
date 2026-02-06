@@ -7,7 +7,7 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from repositories.entrada_repo import EntradaRepository
@@ -47,7 +47,6 @@ class ExportService:
         header_font = Font(bold=True, color='FFFFFF', size=11)
         header_fill = PatternFill(start_color='4F46E5', end_color='4F46E5', fill_type='solid')
         title_font = Font(bold=True, size=14, color='1E293B')
-        subtitle_font = Font(bold=True, size=11, color='64748B')
         border = Border(
             left=Side(style='thin', color='E2E8F0'),
             right=Side(style='thin', color='E2E8F0'),

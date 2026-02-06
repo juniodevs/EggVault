@@ -71,10 +71,3 @@ class QuebradoService:
         if mes_referencia is None:
             mes_referencia = datetime.now().strftime('%Y-%m')
         return QuebradoRepository.get_by_month(mes_referencia)
-
-    @staticmethod
-    def total_mes(mes_referencia=None):
-        """Total de ovos quebrados no mês."""
-        if mes_referencia is None:
-            mes_referencia = datetime.now().strftime('%Y-%m')
-        return QuebradoRepository.get_total_by_month(mes_referencia)

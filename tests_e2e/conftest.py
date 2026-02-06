@@ -22,7 +22,6 @@ sys.path.insert(0, ROOT_DIR)
 
 # ── Configurações (importadas do arquivo na raiz do projeto) ──────────────
 # Valores padrão caso o import falhe
-BASE_URL = "http://localhost:5000"
 DEFAULT_TIMEOUT = 15000
 NAVIGATION_TIMEOUT = 30000
 HEADLESS = True
@@ -231,8 +230,6 @@ def admin_api_context(context):
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     """Captura screenshot quando um teste falha."""
-    import pytest as _pytest
-
     outcome = yield
     rep = outcome.get_result()
 

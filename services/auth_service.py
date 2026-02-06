@@ -157,15 +157,6 @@ class AuthService:
         conn.commit()
         conn.close()
 
-    @staticmethod
-    def limpar_sessoes_expiradas():
-        """Remove sessões expiradas do banco."""
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM sessoes WHERE expira_em < ?", (datetime.now().isoformat(),))
-        conn.commit()
-        conn.close()
-
     # ═══════════════════════════════════════════
     # GERENCIAMENTO DE CONTAS (Admin)
     # ═══════════════════════════════════════════

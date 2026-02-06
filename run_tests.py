@@ -7,7 +7,6 @@ Uso:
     python run_tests.py --security      # Apenas testes de segurança
     python run_tests.py --api           # Apenas testes de API
     python run_tests.py --ui            # Apenas testes de UI
-    python run_tests.py --headed        # Com browser visível
     python run_tests.py --report        # Gerar relatório HTML
 """
 
@@ -35,12 +34,6 @@ def main():
     elif "--slow" in args:
         cmd += ["-m", "slow"]
         args.remove("--slow")
-
-    if "--headed" in args:
-        # Para rodar com browser visível, alterar config
-        import playwright_config
-        playwright_config.HEADLESS = False
-        args.remove("--headed")
 
     if "--report" in args:
         cmd += ["--html=test-results/report.html", "--self-contained-html"]
