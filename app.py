@@ -1,5 +1,5 @@
 """
-🥚 Egg Manager — Aplicativo de Gerenciamento de Ovos
+🥚 EggVault — Aplicativo de Gerenciamento de Ovos
 Servidor Flask com API REST e interface web SPA.
 """
 
@@ -274,6 +274,6 @@ def get_meses():
 
 if __name__ == '__main__':
     init_db()
-    print("🥚 Egg Manager iniciado!")
+    print("🥚 EggVaultiniciado!")
     print("📍 Acesse: http://localhost:5000")
     app.run(debug=True, port=5000)

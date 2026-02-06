@@ -1,4 +1,4 @@
-# 🥚 Egg Manager — Gerenciamento de Ovos
+# 🥚 EggVault— Gerenciamento de Ovos
 
 Sistema completo de gerenciamento de ovos com controle de estoque, vendas, entradas, preços e relatórios mensais com gráficos.
 

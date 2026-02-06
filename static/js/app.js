@@ -1,13 +1,3 @@
-/**
- * 🥚 EGG MANAGER — Frontend Application
- * Single Page Application com navegação por abas,
- * chamadas de API, gráficos e notificações.
- */
-
-// ═══════════════════════════════════════════
-// ESTADO GLOBAL
-// ═══════════════════════════════════════════
-
 let currentTab = 'estoque';
 const currentMonth = {
     entradas: getCurrentMonth(),

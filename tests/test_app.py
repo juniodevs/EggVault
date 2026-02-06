@@ -1,5 +1,5 @@
 """
-Testes unitários e funcionais para o Egg Manager.
+Testes unitários e funcionais para o EggVault.
 Cobre os principais cenários de negócio.
 """
 
@@ -431,7 +431,7 @@ class TestPaginaPrincipal(BaseTestCase):
         """Página principal deve carregar com status 200."""
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
-        self.assertIn(b'Egg Manager', res.data)
+        self.assertIn(b'EggVault', res.data)
 
 
 if __name__ == '__main__':
