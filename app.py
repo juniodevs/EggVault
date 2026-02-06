@@ -69,7 +69,7 @@ def index():
 def auth_login():
     """Autentica usuário e retorna token."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
 
