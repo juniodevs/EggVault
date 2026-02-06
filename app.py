@@ -40,6 +40,17 @@ def login_required(f):
     return decorated
 
 
+def admin_required(f):
+    """Decorator que exige autenticação + permissão de admin."""
+    @wraps(f)
+    @login_required
+    def decorated(*args, **kwargs):
+        if not request.usuario.get('is_admin'):
+            return jsonify({'success': False, 'error': 'Acesso negado — apenas administradores'}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
 # ═══════════════════════════════════════════
 # PÁGINA PRINCIPAL
 # ═══════════════════════════════════════════
@@ -173,7 +184,11 @@ def add_entrada():
 
         quantidade = int(data.get('quantidade', 0))
         observacao = data.get('observacao', '')
-        entry_id = EntradaService.registrar(quantidade, observacao)
+        entry_id = EntradaService.registrar(
+            quantidade, observacao,
+            usuario_id=request.usuario['id'],
+            usuario_nome=request.usuario['nome'] or request.usuario['username']
+        )
         return jsonify({
             'success': True,
             'id': entry_id,
@@ -235,7 +250,11 @@ def add_saida():
         if preco_unitario is not None:
             preco_unitario = float(preco_unitario)
 
-        sale_id = SaidaService.registrar(quantidade, preco_unitario)
+        sale_id = SaidaService.registrar(
+            quantidade, preco_unitario,
+            usuario_id=request.usuario['id'],
+            usuario_nome=request.usuario['nome'] or request.usuario['username']
+        )
         return jsonify({
             'success': True,
             'id': sale_id,
@@ -338,7 +357,11 @@ def add_quebrado():
 
         quantidade = int(data.get('quantidade', 0))
         motivo = data.get('motivo', '')
-        entry_id = QuebradoService.registrar(quantidade, motivo)
+        entry_id = QuebradoService.registrar(
+            quantidade, motivo,
+            usuario_id=request.usuario['id'],
+            usuario_nome=request.usuario['nome'] or request.usuario['username']
+        )
         return jsonify({
             'success': True,
             'id': entry_id,
@@ -419,6 +442,82 @@ def get_meses():
             meses.insert(0, current)
 
         return jsonify({'success': True, 'data': meses})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ═══════════════════════════════════════════
+# API — ADMINISTRAÇÃO DE USUÁRIOS
+# ═══════════════════════════════════════════
+
+@app.route('/api/admin/usuarios', methods=['GET'])
+@admin_required
+def admin_listar_usuarios():
+    """Lista todos os usuários (apenas admin)."""
+    try:
+        usuarios = AuthService.listar_usuarios()
+        return jsonify({'success': True, 'data': usuarios})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/usuarios', methods=['POST'])
+@admin_required
+def admin_criar_usuario():
+    """Cria um novo usuário (apenas admin)."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
+
+        usuario = AuthService.criar_usuario(
+            username=data.get('username', ''),
+            password=data.get('password', ''),
+            nome=data.get('nome', ''),
+            is_admin=data.get('is_admin', False)
+        )
+        return jsonify({
+            'success': True,
+            'data': usuario,
+            'message': f'Usuário "{usuario["username"]}" criado com sucesso'
+        })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/usuarios/<int:usuario_id>', methods=['PUT'])
+@admin_required
+def admin_atualizar_usuario(usuario_id):
+    """Atualiza um usuário (apenas admin)."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
+
+        AuthService.atualizar_usuario(
+            usuario_id,
+            nome=data.get('nome'),
+            is_admin=data.get('is_admin'),
+            nova_senha=data.get('nova_senha')
+        )
+        return jsonify({'success': True, 'message': 'Usuário atualizado'})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/usuarios/<int:usuario_id>', methods=['DELETE'])
+@admin_required
+def admin_deletar_usuario(usuario_id):
+    """Remove um usuário (apenas admin)."""
+    try:
+        AuthService.deletar_usuario(usuario_id)
+        return jsonify({'success': True, 'message': 'Usuário removido com sucesso'})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

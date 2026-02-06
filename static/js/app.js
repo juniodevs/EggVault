@@ -12,6 +12,7 @@ const charts = {};
 // ═══════════════════════════════════════════
 
 let authToken = localStorage.getItem('auth_token') || '';
+let currentUser = null;
 
 function saveToken(token) {
     authToken = token;
@@ -47,7 +48,11 @@ async function checkAuth() {
         const data = await res.json();
         if (data.success) {
             hideLogin();
+            currentUser = data.data;
             document.getElementById('sidebar-username').textContent = data.data.nome || data.data.username;
+            // Mostrar aba admin se for administrador
+            const navAdmin = document.getElementById('nav-admin');
+            if (navAdmin) navAdmin.style.display = data.data.is_admin ? '' : 'none';
             return true;
         } else {
             clearToken();
@@ -81,8 +86,12 @@ async function doLogin(username, password) {
         if (data.success) {
             saveToken(data.data.token);
             hideLogin();
+            currentUser = data.data.usuario;
             document.getElementById('sidebar-username').textContent =
                 data.data.usuario.nome || data.data.usuario.username;
+            // Mostrar aba admin se for administrador
+            const navAdmin = document.getElementById('nav-admin');
+            if (navAdmin) navAdmin.style.display = data.data.usuario.is_admin ? '' : 'none';
             loadEstoque();
             showToast(`Bem-vindo, ${data.data.usuario.nome || data.data.usuario.username}!`, 'success');
         } else {
@@ -297,10 +306,75 @@ function showToast(message, type = 'success') {
 }
 
 // ═══════════════════════════════════════════
+// MODAL DE CONFIRMAÇÃO CUSTOMIZADO
+// ═══════════════════════════════════════════
+
+function customConfirm(title, message) {
+    return new Promise((resolve) => {
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-message').textContent = message;
+        const overlay = document.getElementById('modal-confirm');
+        overlay.style.display = 'flex';
+
+        const okBtn = document.getElementById('confirm-ok-btn');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+        function cleanup() {
+            overlay.style.display = 'none';
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            overlay.removeEventListener('click', onOverlay);
+        }
+        function onOk() { cleanup(); resolve(true); }
+        function onCancel() { cleanup(); resolve(false); }
+        function onOverlay(e) { if (e.target === overlay) { cleanup(); resolve(false); } }
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        overlay.addEventListener('click', onOverlay);
+    });
+}
+
+// ═══════════════════════════════════════════
+// MODAL REDEFINIR SENHA (ADMIN)
+// ═══════════════════════════════════════════
+
+function showResetPassword(userId, username) {
+    document.getElementById('reset-senha-user-id').value = userId;
+    document.getElementById('reset-senha-username').value = username;
+    document.getElementById('reset-senha-subtitle').textContent = `Definir nova senha para "${username}"`;
+    document.getElementById('reset-nova-senha').value = '';
+    document.getElementById('reset-confirmar-senha').value = '';
+    document.getElementById('modal-reset-senha').style.display = 'flex';
+    document.getElementById('reset-nova-senha').focus();
+}
+
+function hideResetPassword() {
+    document.getElementById('modal-reset-senha').style.display = 'none';
+}
+
+async function doResetPassword(userId, username, novaSenha) {
+    try {
+        const res = await api(`/api/admin/usuarios/${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ nova_senha: novaSenha })
+        });
+        showToast(`Senha de "${username}" redefinida`, 'success');
+    } catch {
+        // Toast exibido
+    }
+}
+
+// ═══════════════════════════════════════════
 // NAVEGAÇÃO POR ABAS
 // ═══════════════════════════════════════════
 
 function switchTab(tabName) {
+    // Bloquear acesso de não-admin à aba Admin
+    if (tabName === 'admin' && (!currentUser || !currentUser.is_admin)) {
+        switchTab('estoque');
+        return;
+    }
     // Atualizar sidebar
     document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'));
     const target = document.querySelector(`.nav-links li[data-tab="${tabName}"]`);
@@ -326,6 +400,7 @@ async function loadTabData(tabName) {
         case 'quebrados':  await loadQuebrados(); break;
         case 'precos':     await loadPrecos(); break;
         case 'relatorios': await loadRelatorios(); break;
+        case 'admin':      await loadAdminUsers(); break;
     }
 }
 
@@ -400,7 +475,7 @@ async function loadEntradas() {
 
         if (res.data.length === 0) {
             tbody.innerHTML =
-                '<tr><td colspan="4" class="empty-state">Nenhuma entrada registrada neste mês</td></tr>';
+                '<tr><td colspan="5" class="empty-state">Nenhuma entrada registrada neste mês</td></tr>';
             return;
         }
 
@@ -409,6 +484,7 @@ async function loadEntradas() {
                 <td>${formatDate(e.data)}</td>
                 <td><strong>${e.quantidade}</strong> ovos</td>
                 <td>${e.observacao || '—'}</td>
+                <td><span class="user-badge">${e.usuario_nome || '—'}</span></td>
                 <td>
                     <button class="btn-undo" onclick="undoEntrada(${e.id}, ${e.quantidade})" title="Desfazer — remover do estoque">
                         <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
@@ -452,7 +528,7 @@ async function loadVendas() {
 
         if (res.data.length === 0) {
             tbody.innerHTML =
-                '<tr><td colspan="5" class="empty-state">Nenhuma venda registrada neste mês</td></tr>';
+                '<tr><td colspan="6" class="empty-state">Nenhuma venda registrada neste mês</td></tr>';
             return;
         }
 
@@ -462,6 +538,7 @@ async function loadVendas() {
                 <td><strong>${s.quantidade}</strong></td>
                 <td>${formatCurrency(s.preco_unitario)}</td>
                 <td><strong>${formatCurrency(s.valor_total)}</strong></td>
+                <td><span class="user-badge">${s.usuario_nome || '—'}</span></td>
                 <td>
                     <button class="btn-undo" onclick="undoVenda(${s.id}, ${s.quantidade})" title="Desfazer — devolver ao estoque">
                         <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
@@ -505,7 +582,7 @@ async function loadQuebrados() {
 
         if (res.data.length === 0) {
             tbody.innerHTML =
-                '<tr><td colspan="4" class="empty-state">Nenhum registro de quebra neste mês</td></tr>';
+                '<tr><td colspan="5" class="empty-state">Nenhum registro de quebra neste mês</td></tr>';
             return;
         }
 
@@ -514,6 +591,7 @@ async function loadQuebrados() {
                 <td>${formatDate(q.data)}</td>
                 <td><strong>${q.quantidade}</strong> ovos</td>
                 <td>${q.motivo || '—'}</td>
+                <td><span class="user-badge">${q.usuario_nome || '—'}</span></td>
                 <td>
                     <button class="btn-undo" onclick="undoQuebrado(${q.id}, ${q.quantidade})" title="Desfazer — devolver ao estoque">
                         <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
@@ -528,7 +606,8 @@ async function loadQuebrados() {
 }
 
 async function undoQuebrado(entryId, quantidade) {
-    if (!confirm(`Desfazer registro de ${quantidade} ovo(s) quebrado(s)?\nOs ovos serão devolvidos ao estoque.`)) return;
+    const ok = await customConfirm('Desfazer Quebrado', `Desfazer registro de ${quantidade} ovo(s) quebrado(s)? Os ovos serão devolvidos ao estoque.`);
+    if (!ok) return;
     try {
         const res = await api(`/api/quebrados/${entryId}`, { method: 'DELETE' });
         showToast(res.message, 'success');
@@ -539,7 +618,8 @@ async function undoQuebrado(entryId, quantidade) {
 }
 
 async function undoVenda(saleId, quantidade) {
-    if (!confirm(`Desfazer venda de ${quantidade} ovo(s)?\nOs ovos serão devolvidos ao estoque.`)) return;
+    const ok = await customConfirm('Desfazer Venda', `Desfazer venda de ${quantidade} ovo(s)? Os ovos serão devolvidos ao estoque.`);
+    if (!ok) return;
     try {
         const res = await api(`/api/saidas/${saleId}`, { method: 'DELETE' });
         showToast(res.message, 'success');
@@ -550,7 +630,8 @@ async function undoVenda(saleId, quantidade) {
 }
 
 async function undoEntrada(entryId, quantidade) {
-    if (!confirm(`Desfazer entrada de ${quantidade} ovo(s)?\nOs ovos serão removidos do estoque.`)) return;
+    const ok = await customConfirm('Desfazer Entrada', `Desfazer entrada de ${quantidade} ovo(s)? Os ovos serão removidos do estoque.`);
+    if (!ok) return;
     try {
         const res = await api(`/api/entradas/${entryId}`, { method: 'DELETE' });
         showToast(res.message, 'success');
@@ -862,6 +943,82 @@ function changeMonth(section, delta) {
 }
 
 // ═══════════════════════════════════════════
+// ABA — PAINEL ADMIN
+// ═══════════════════════════════════════════
+
+async function loadAdminUsers() {
+    try {
+        const res = await api('/api/admin/usuarios');
+        const tbody = document.getElementById('admin-users-list');
+
+        if (res.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum usuário</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = res.data.map(u => `
+            <tr>
+                <td><strong>${u.nome || '—'}</strong></td>
+                <td><code>${u.username}</code></td>
+                <td>
+                    ${u.is_admin
+                        ? '<span class="badge badge-admin"><i class="fas fa-shield-alt"></i> Admin</span>'
+                        : '<span class="badge badge-user"><i class="fas fa-user"></i> Usuário</span>'}
+                </td>
+                <td>${u.ultimo_login ? formatDate(u.ultimo_login) : '<em>Nunca</em>'}</td>
+                <td>
+                    <div class="admin-actions">
+                        <button class="btn-admin-action btn-admin-reset"
+                                onclick="adminResetPassword(${u.id}, '${u.username}')"
+                                title="Redefinir senha">
+                            <i class="fas fa-key"></i>
+                        </button>
+                        <button class="btn-admin-action btn-admin-delete"
+                                onclick="adminDeleteUser(${u.id}, '${u.username}')"
+                                title="Remover conta"
+                                ${u.username === 'admin' ? 'disabled' : ''}>
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (e) {
+        console.error('Erro ao carregar usuários:', e);
+    }
+}
+
+async function adminCreateUser(username, password, nome, isAdmin) {
+    try {
+        const res = await api('/api/admin/usuarios', {
+            method: 'POST',
+            body: JSON.stringify({ username, password, nome, is_admin: isAdmin })
+        });
+        showToast(res.message, 'success');
+        await loadAdminUsers();
+    } catch {
+        // Toast já exibido
+    }
+}
+
+async function adminDeleteUser(userId, username) {
+    const ok = await customConfirm('Remover Conta', `Remover a conta "${username}"? Essa ação não pode ser desfeita.`);
+    if (!ok) return;
+    try {
+        const res = await api(`/api/admin/usuarios/${userId}`, { method: 'DELETE' });
+        showToast(res.message, 'success');
+        await loadAdminUsers();
+    } catch {
+        // Toast já exibido
+    }
+}
+
+function adminResetPassword(userId, username) {
+    showResetPassword(userId, username);
+}
+
+// ═══════════════════════════════════════════
 // EVENT LISTENERS & INICIALIZAÇÃO
 // ═══════════════════════════════════════════
 
@@ -901,6 +1058,57 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Fechar modal ao clicar no fundo ──
     document.getElementById('modal-senha').addEventListener('click', (e) => {
         if (e.target === e.currentTarget) hideChangePassword();
+    });
+
+    // ── Fechar modal reset senha ao clicar no fundo ──
+    document.getElementById('modal-reset-senha').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) hideResetPassword();
+    });
+
+    // ── Formulário: Redefinir Senha (Admin) ──
+    document.getElementById('form-reset-senha').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = document.getElementById('reset-senha-user-id').value;
+        const username = document.getElementById('reset-senha-username').value;
+        const novaSenha = document.getElementById('reset-nova-senha').value;
+        const confirmar = document.getElementById('reset-confirmar-senha').value;
+
+        if (novaSenha.length < 4) {
+            showToast('Senha deve ter no mínimo 4 caracteres', 'error');
+            return;
+        }
+        if (novaSenha !== confirmar) {
+            showToast('As senhas não coincidem', 'error');
+            return;
+        }
+
+        await doResetPassword(userId, username, novaSenha);
+        hideResetPassword();
+    });
+
+    // ── Formulário: Criar Usuário (Admin) ──
+    document.getElementById('form-criar-usuario').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="spinner"></span> Criando...';
+            btn.disabled = true;
+
+            const nome = document.getElementById('new-user-nome').value.trim();
+            const username = document.getElementById('new-user-username').value.trim();
+            const password = document.getElementById('new-user-password').value;
+            const isAdmin = document.getElementById('new-user-admin').checked;
+
+            await adminCreateUser(username, password, nome, isAdmin);
+            e.target.reset();
+        } catch {
+            // Toast já exibido
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
     });
 
     // ── Navegação por abas ──

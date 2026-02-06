@@ -11,13 +11,15 @@ class SaidaService:
     """Lógica de negócios para registro de vendas/saídas de ovos."""
 
     @staticmethod
-    def registrar(quantidade, preco_unitario=None):
+    def registrar(quantidade, preco_unitario=None, usuario_id=None, usuario_nome=''):
         """
         Registra uma nova venda de ovos.
 
         Args:
             quantidade: Número de ovos vendidos (inteiro positivo).
             preco_unitario: Preço por ovo. Se None, usa o preço ativo.
+            usuario_id: ID do usuário que registrou.
+            usuario_nome: Nome do usuário que registrou.
 
         Returns:
             ID da venda criada.
@@ -49,7 +51,7 @@ class SaidaService:
         valor_total = round(quantidade * preco_unitario, 2)
         mes_ref = datetime.now().strftime('%Y-%m')
 
-        sale_id = SaidaRepository.create(quantidade, preco_unitario, valor_total, mes_ref)
+        sale_id = SaidaRepository.create(quantidade, preco_unitario, valor_total, mes_ref, usuario_id, usuario_nome)
         EstoqueService.atualizar(quantidade, 'subtract')
         RelatorioService.atualizar_resumo(mes_ref)
 

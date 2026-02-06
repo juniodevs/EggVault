@@ -58,6 +58,23 @@ class BaseTestCase(unittest.TestCase):
             content_type='application/json'
         )
 
+    def _create_user(self, username='joao', password='1234', nome='João', is_admin=False):
+        """Helper para criar um usuário via API de admin."""
+        return self._post_json('/api/admin/usuarios', {
+            'username': username,
+            'password': password,
+            'nome': nome,
+            'is_admin': is_admin
+        })
+
+    def _login_as(self, client, username, password):
+        """Login com um usuário específico em um client."""
+        return client.post(
+            '/api/auth/login',
+            data=json.dumps({'username': username, 'password': password}),
+            content_type='application/json'
+        )
+
 
 class TestEstoque(BaseTestCase):
     """Testes para a funcionalidade de Estoque."""
@@ -657,6 +674,221 @@ class TestExportacao(BaseTestCase):
         client = app.test_client()
         res = client.get('/api/export/excel')
         self.assertEqual(res.status_code, 401)
+
+
+class TestAdminUsuarios(BaseTestCase):
+    """Testes para o painel de administração de usuários."""
+
+    def test_listar_usuarios(self):
+        """Admin deve poder listar todos os usuários."""
+        res = self.client.get('/api/admin/usuarios')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+        self.assertIsInstance(data['data'], list)
+        self.assertGreaterEqual(len(data['data']), 1)
+        # Verificar que admin está na lista
+        usernames = [u['username'] for u in data['data']]
+        self.assertIn('admin', usernames)
+
+    def test_criar_usuario(self):
+        """Admin deve criar um novo usuário com sucesso."""
+        res = self._create_user('maria', '1234', 'Maria Silva')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+        self.assertEqual(data['data']['username'], 'maria')
+        self.assertFalse(data['data']['is_admin'])
+
+    def test_criar_usuario_admin(self):
+        """Admin deve criar outro admin."""
+        res = self._create_user('supervisor', 'senha123', 'Supervisor', is_admin=True)
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+        self.assertTrue(data['data']['is_admin'])
+
+    def test_criar_usuario_duplicado(self):
+        """Criar usuário com username duplicado deve falhar."""
+        self._create_user('joao', '1234', 'João')
+        res = self._create_user('joao', '5678', 'João 2')
+        data = json.loads(res.data)
+        self.assertFalse(data['success'])
+        self.assertEqual(res.status_code, 400)
+
+    def test_criar_usuario_dados_invalidos(self):
+        """Username curto ou senha curta devem ser rejeitados."""
+        # Username muito curto
+        res = self._create_user('ab', '1234', 'Teste')
+        self.assertEqual(res.status_code, 400)
+
+        # Senha muito curta
+        res = self._create_user('teste', '12', 'Teste')
+        self.assertEqual(res.status_code, 400)
+
+    def test_deletar_usuario(self):
+        """Admin deve poder deletar um usuário."""
+        r = self._create_user('temp', '1234', 'Temporário')
+        user_id = json.loads(r.data)['data']['id']
+
+        res = self.client.delete(f'/api/admin/usuarios/{user_id}')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Verificar que foi removido
+        lista = json.loads(self.client.get('/api/admin/usuarios').data)
+        usernames = [u['username'] for u in lista['data']]
+        self.assertNotIn('temp', usernames)
+
+    def test_nao_deletar_ultimo_admin(self):
+        """Não deve permitir deletar o último admin."""
+        # Buscar ID do admin
+        lista = json.loads(self.client.get('/api/admin/usuarios').data)
+        admin_id = next(u['id'] for u in lista['data'] if u['username'] == 'admin')
+
+        res = self.client.delete(f'/api/admin/usuarios/{admin_id}')
+        data = json.loads(res.data)
+        self.assertFalse(data['success'])
+        self.assertEqual(res.status_code, 400)
+
+    def test_redefinir_senha_usuario(self):
+        """Admin deve poder redefinir senha de outro usuário."""
+        self._create_user('pedro', '1234', 'Pedro')
+
+        # Buscar ID
+        lista = json.loads(self.client.get('/api/admin/usuarios').data)
+        pedro_id = next(u['id'] for u in lista['data'] if u['username'] == 'pedro')
+
+        # Redefinir senha
+        res = self.client.put(
+            f'/api/admin/usuarios/{pedro_id}',
+            data=json.dumps({'nova_senha': 'novasenha'}),
+            content_type='application/json'
+        )
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Login com nova senha deve funcionar
+        client2 = app.test_client()
+        res2 = self._login_as(client2, 'pedro', 'novasenha')
+        self.assertEqual(res2.status_code, 200)
+
+    def test_non_admin_nao_acessa_painel(self):
+        """Usuário não-admin deve receber 403 no painel admin."""
+        self._create_user('trabalhador', '1234', 'Trabalhador')
+
+        client2 = app.test_client()
+        self._login_as(client2, 'trabalhador', '1234')
+
+        res = client2.get('/api/admin/usuarios')
+        self.assertEqual(res.status_code, 403)
+
+    def test_non_admin_nao_cria_usuario(self):
+        """Usuário não-admin não deve poder criar contas."""
+        self._create_user('trabalhador', '1234', 'Trabalhador')
+
+        client2 = app.test_client()
+        self._login_as(client2, 'trabalhador', '1234')
+
+        res = client2.post(
+            '/api/admin/usuarios',
+            data=json.dumps({'username': 'hacker', 'password': '1234', 'nome': 'Hacker'}),
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 403)
+
+
+class TestMultiConta(BaseTestCase):
+    """Testes para funcionalidade multi-conta (logs com nome do usuário)."""
+
+    def test_entrada_registra_nome_usuario(self):
+        """Entrada deve registrar qual usuário fez a ação."""
+        # Admin registra entrada
+        self._post_json('/api/entradas', {'quantidade': 50})
+
+        from datetime import datetime
+        mes = datetime.now().strftime('%Y-%m')
+        res = self.client.get(f'/api/entradas?mes={mes}')
+        data = json.loads(res.data)
+
+        self.assertEqual(len(data['data']), 1)
+        self.assertEqual(data['data'][0]['usuario_nome'], 'Administrador')
+
+    def test_venda_registra_nome_usuario(self):
+        """Venda deve registrar qual usuário fez a ação."""
+        self._post_json('/api/entradas', {'quantidade': 100})
+        self._post_json('/api/precos', {'preco_unitario': 1.50})
+        self._post_json('/api/saidas', {'quantidade': 20})
+
+        from datetime import datetime
+        mes = datetime.now().strftime('%Y-%m')
+        res = self.client.get(f'/api/saidas?mes={mes}')
+        data = json.loads(res.data)
+
+        self.assertEqual(data['data'][0]['usuario_nome'], 'Administrador')
+
+    def test_quebrado_registra_nome_usuario(self):
+        """Quebra deve registrar qual usuário fez a ação."""
+        self._post_json('/api/entradas', {'quantidade': 50})
+        self.client.post('/api/quebrados',
+            data=json.dumps({'quantidade': 5, 'motivo': 'Teste'}),
+            content_type='application/json')
+
+        from datetime import datetime
+        mes = datetime.now().strftime('%Y-%m')
+        res = self.client.get(f'/api/quebrados?mes={mes}')
+        data = json.loads(res.data)
+
+        self.assertEqual(data['data'][0]['usuario_nome'], 'Administrador')
+
+    def test_diferentes_usuarios_nos_logs(self):
+        """Ações de diferentes usuários devem aparecer nos logs."""
+        # Admin adiciona estoque
+        self._post_json('/api/entradas', {'quantidade': 100})
+
+        # Criar segundo usuário
+        self._create_user('maria', '1234', 'Maria Silva')
+
+        # Maria faz login
+        client2 = app.test_client()
+        self._login_as(client2, 'maria', '1234')
+
+        # Maria registra entrada
+        client2.post('/api/entradas',
+            data=json.dumps({'quantidade': 30, 'observacao': 'Maria coletou'}),
+            content_type='application/json')
+
+        from datetime import datetime
+        mes = datetime.now().strftime('%Y-%m')
+        res = self.client.get(f'/api/entradas?mes={mes}')
+        data = json.loads(res.data)
+
+        nomes = [e['usuario_nome'] for e in data['data']]
+        self.assertIn('Administrador', nomes)
+        self.assertIn('Maria Silva', nomes)
+
+    def test_usuario_normal_faz_venda(self):
+        """Usuário não-admin deve poder registrar vendas normalmente."""
+        # Admin prepara estoque e preço
+        self._post_json('/api/entradas', {'quantidade': 100})
+        self._post_json('/api/precos', {'preco_unitario': 2.00})
+
+        # Criar usuário normal
+        self._create_user('carlos', '1234', 'Carlos')
+
+        # Carlos faz login e vende
+        client2 = app.test_client()
+        self._login_as(client2, 'carlos', '1234')
+
+        res = client2.post('/api/saidas',
+            data=json.dumps({'quantidade': 10}),
+            content_type='application/json')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Verificar no log
+        from datetime import datetime
+        mes = datetime.now().strftime('%Y-%m')
+        res2 = self.client.get(f'/api/saidas?mes={mes}')
+        vendas = json.loads(res2.data)['data']
+        self.assertEqual(vendas[0]['usuario_nome'], 'Carlos')
 
 
 if __name__ == '__main__':

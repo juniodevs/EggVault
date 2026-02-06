@@ -8,7 +8,7 @@ class EntradaRepository:
     """Operações CRUD para a tabela entradas."""
 
     @staticmethod
-    def create(quantidade, observacao='', mes_referencia=None):
+    def create(quantidade, observacao='', mes_referencia=None, usuario_id=None, usuario_nome=''):
         """Cria um novo registro de entrada."""
         if mes_referencia is None:
             mes_referencia = datetime.now().strftime('%Y-%m')
@@ -16,8 +16,9 @@ class EntradaRepository:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO entradas (quantidade, data, observacao, mes_referencia) VALUES (?, ?, ?, ?)",
-            (quantidade, datetime.now().isoformat(), observacao, mes_referencia)
+            """INSERT INTO entradas (quantidade, data, observacao, mes_referencia, usuario_id, usuario_nome)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (quantidade, datetime.now().isoformat(), observacao, mes_referencia, usuario_id, usuario_nome)
         )
         entry_id = cursor.lastrowid
         conn.commit()

@@ -41,7 +41,9 @@ def init_db():
             quantidade INTEGER NOT NULL CHECK(quantidade > 0),
             data DATETIME DEFAULT CURRENT_TIMESTAMP,
             observacao TEXT DEFAULT '',
-            mes_referencia TEXT NOT NULL
+            mes_referencia TEXT NOT NULL,
+            usuario_id INTEGER,
+            usuario_nome TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS saidas (
@@ -50,7 +52,9 @@ def init_db():
             preco_unitario REAL NOT NULL CHECK(preco_unitario >= 0),
             valor_total REAL NOT NULL CHECK(valor_total >= 0),
             data DATETIME DEFAULT CURRENT_TIMESTAMP,
-            mes_referencia TEXT NOT NULL
+            mes_referencia TEXT NOT NULL,
+            usuario_id INTEGER,
+            usuario_nome TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS precos (
@@ -65,7 +69,9 @@ def init_db():
             quantidade INTEGER NOT NULL CHECK(quantidade > 0),
             data DATETIME DEFAULT CURRENT_TIMESTAMP,
             motivo TEXT DEFAULT '',
-            mes_referencia TEXT NOT NULL
+            mes_referencia TEXT NOT NULL,
+            usuario_id INTEGER,
+            usuario_nome TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS resumo_mensal (
@@ -84,6 +90,7 @@ def init_db():
             password_hash TEXT NOT NULL,
             salt TEXT NOT NULL,
             nome TEXT NOT NULL DEFAULT '',
+            is_admin INTEGER NOT NULL DEFAULT 0,
             criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
             ultimo_login DATETIME
         );
@@ -97,6 +104,22 @@ def init_db():
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
         );
     ''')
+
+    # Migrações — adicionar colunas se não existem (para bancos existentes)
+    _migrate_columns = [
+        ('entradas', 'usuario_id', 'INTEGER'),
+        ('entradas', 'usuario_nome', "TEXT DEFAULT ''"),
+        ('saidas', 'usuario_id', 'INTEGER'),
+        ('saidas', 'usuario_nome', "TEXT DEFAULT ''"),
+        ('quebrados', 'usuario_id', 'INTEGER'),
+        ('quebrados', 'usuario_nome', "TEXT DEFAULT ''"),
+        ('usuarios', 'is_admin', 'INTEGER NOT NULL DEFAULT 0'),
+    ]
+    for table, col, col_type in _migrate_columns:
+        try:
+            cursor.execute(f'ALTER TABLE {table} ADD COLUMN {col} {col_type}')
+        except Exception:
+            pass  # Coluna já existe
 
     # Inicializa registro de estoque se vazio
     cursor.execute("SELECT COUNT(*) as count FROM estoque")
@@ -112,9 +135,12 @@ def init_db():
         salt = secrets.token_hex(32)
         password_hash = hashlib.sha256(('admin' + salt).encode()).hexdigest()
         cursor.execute(
-            "INSERT INTO usuarios (username, password_hash, salt, nome) VALUES (?, ?, ?, ?)",
-            ('admin', password_hash, salt, 'Administrador')
+            "INSERT INTO usuarios (username, password_hash, salt, nome, is_admin) VALUES (?, ?, ?, ?, ?)",
+            ('admin', password_hash, salt, 'Administrador', 1)
         )
+    else:
+        # Garantir que o admin existente tenha is_admin=1
+        cursor.execute("UPDATE usuarios SET is_admin = 1 WHERE username = 'admin' AND is_admin = 0")
 
     conn.commit()
     conn.close()

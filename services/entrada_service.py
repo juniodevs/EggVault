@@ -10,13 +10,15 @@ class EntradaService:
     """Lógica de negócios para registro de entradas de ovos."""
 
     @staticmethod
-    def registrar(quantidade, observacao=''):
+    def registrar(quantidade, observacao='', usuario_id=None, usuario_nome=''):
         """
         Registra uma nova entrada de ovos.
 
         Args:
             quantidade: Número de ovos (inteiro positivo).
             observacao: Texto opcional de observação.
+            usuario_id: ID do usuário que registrou.
+            usuario_nome: Nome do usuário que registrou.
 
         Returns:
             ID da entrada criada.
@@ -28,7 +30,7 @@ class EntradaService:
             raise ValueError("Quantidade deve ser um número inteiro positivo")
 
         mes_ref = datetime.now().strftime('%Y-%m')
-        entry_id = EntradaRepository.create(quantidade, observacao, mes_ref)
+        entry_id = EntradaRepository.create(quantidade, observacao, mes_ref, usuario_id, usuario_nome)
         EstoqueService.atualizar(quantidade, 'add')
         RelatorioService.atualizar_resumo(mes_ref)
 

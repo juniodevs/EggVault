@@ -10,13 +10,15 @@ class QuebradoService:
     """Lógica de negócios para registro de ovos quebrados (perda)."""
 
     @staticmethod
-    def registrar(quantidade, motivo=''):
+    def registrar(quantidade, motivo='', usuario_id=None, usuario_nome=''):
         """
         Registra ovos quebrados — subtrai do estoque.
 
         Args:
             quantidade: Número de ovos quebrados (inteiro positivo).
             motivo: Motivo/observação da perda.
+            usuario_id: ID do usuário que registrou.
+            usuario_nome: Nome do usuário que registrou.
 
         Returns:
             ID do registro criado.
@@ -35,7 +37,7 @@ class QuebradoService:
             )
 
         mes_ref = datetime.now().strftime('%Y-%m')
-        entry_id = QuebradoRepository.create(quantidade, motivo, mes_ref)
+        entry_id = QuebradoRepository.create(quantidade, motivo, mes_ref, usuario_id, usuario_nome)
         EstoqueService.atualizar(quantidade, 'subtract')
         RelatorioService.atualizar_resumo(mes_ref)
 

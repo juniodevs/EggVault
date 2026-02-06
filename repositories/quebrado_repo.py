@@ -8,7 +8,7 @@ class QuebradoRepository:
     """Operações CRUD para a tabela quebrados."""
 
     @staticmethod
-    def create(quantidade, motivo='', mes_referencia=None):
+    def create(quantidade, motivo='', mes_referencia=None, usuario_id=None, usuario_nome=''):
         """Cria um novo registro de ovos quebrados."""
         if mes_referencia is None:
             mes_referencia = datetime.now().strftime('%Y-%m')
@@ -16,8 +16,9 @@ class QuebradoRepository:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO quebrados (quantidade, data, motivo, mes_referencia) VALUES (?, ?, ?, ?)",
-            (quantidade, datetime.now().isoformat(), motivo, mes_referencia)
+            """INSERT INTO quebrados (quantidade, data, motivo, mes_referencia, usuario_id, usuario_nome)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (quantidade, datetime.now().isoformat(), motivo, mes_referencia, usuario_id, usuario_nome)
         )
         entry_id = cursor.lastrowid
         conn.commit()

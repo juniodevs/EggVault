@@ -8,7 +8,7 @@ class SaidaRepository:
     """Operações CRUD para a tabela saidas."""
 
     @staticmethod
-    def create(quantidade, preco_unitario, valor_total, mes_referencia=None):
+    def create(quantidade, preco_unitario, valor_total, mes_referencia=None, usuario_id=None, usuario_nome=''):
         """Cria um novo registro de saída/venda."""
         if mes_referencia is None:
             mes_referencia = datetime.now().strftime('%Y-%m')
@@ -16,9 +16,9 @@ class SaidaRepository:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            """INSERT INTO saidas (quantidade, preco_unitario, valor_total, data, mes_referencia)
-               VALUES (?, ?, ?, ?, ?)""",
-            (quantidade, preco_unitario, valor_total, datetime.now().isoformat(), mes_referencia)
+            """INSERT INTO saidas (quantidade, preco_unitario, valor_total, data, mes_referencia, usuario_id, usuario_nome)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (quantidade, preco_unitario, valor_total, datetime.now().isoformat(), mes_referencia, usuario_id, usuario_nome)
         )
         sale_id = cursor.lastrowid
         conn.commit()

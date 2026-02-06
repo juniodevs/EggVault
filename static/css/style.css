@@ -1306,6 +1306,46 @@ tbody tr:hover {
 }
 
 /* ═══════════════════════════════════════════
+   MODAL DE CONFIRMAÇÃO CUSTOMIZADO
+   ═══════════════════════════════════════════ */
+
+.modal-confirm-card {
+    text-align: center;
+    max-width: 400px;
+}
+
+.modal-confirm-card h3 {
+    justify-content: center;
+}
+
+.modal-confirm-card .modal-actions {
+    justify-content: center;
+}
+
+.confirm-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    background: var(--warning-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-icon i {
+    font-size: 1.5rem;
+    color: var(--warning);
+}
+
+.confirm-message {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+/* ═══════════════════════════════════════════
    SIDEBAR — SEÇÃO USUÁRIO
    ═══════════════════════════════════════════ */
 
@@ -1434,6 +1474,128 @@ tbody tr:hover {
 .btn-export-anual:hover {
     background: #e0e7ff;
     border-color: var(--primary-dark);
+}
+
+/* ═══════════════════════════════════════════
+   PAINEL ADMIN
+   ═══════════════════════════════════════════ */
+
+.badge-admin {
+    background: linear-gradient(135deg, #7c3aed, #6366f1);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.badge-user {
+    background: var(--bg);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-admin-action {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: var(--transition);
+}
+
+.btn-admin-reset {
+    background: var(--warning-light);
+    color: var(--warning-dark);
+}
+
+.btn-admin-reset:hover {
+    background: var(--warning);
+    color: #fff;
+}
+
+.btn-admin-delete {
+    background: var(--danger-light);
+    color: var(--danger-dark);
+}
+
+.btn-admin-delete:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+.btn-admin-delete:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.form-hint {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    margin-top: 4px;
+}
+
+/* User badge nos logs de tabela */
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg);
+    color: var(--text-secondary);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+/* Código de username na tabela admin */
+.admin-users-list code {
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: var(--primary-dark);
 }
 
 /* ═══════════════════════════════════════════

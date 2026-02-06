@@ -76,6 +76,53 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════ MODAL CONFIRMAR AÇÃO ═══════════════════════════ -->
+    <div class="modal-overlay" id="modal-confirm" style="display:none;">
+        <div class="modal-card modal-confirm-card">
+            <div class="confirm-icon" id="confirm-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 id="confirm-title">Confirmar Ação</h3>
+            <p class="confirm-message" id="confirm-message">Tem certeza?</p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-icon-text" id="confirm-cancel-btn">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="confirm-ok-btn">
+                    <i class="fas fa-check"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════ MODAL REDEFINIR SENHA (ADMIN) ═══════════════════════════ -->
+    <div class="modal-overlay" id="modal-reset-senha" style="display:none;">
+        <div class="modal-card">
+            <h3><i class="fas fa-key"></i> Redefinir Senha</h3>
+            <p class="confirm-message" id="reset-senha-subtitle">Definir nova senha para o usuário</p>
+            <form id="form-reset-senha">
+                <input type="hidden" id="reset-senha-user-id">
+                <input type="hidden" id="reset-senha-username">
+                <div class="form-group">
+                    <label for="reset-nova-senha">Nova Senha</label>
+                    <input type="password" id="reset-nova-senha" required placeholder="Mínimo 4 caracteres" minlength="4">
+                </div>
+                <div class="form-group">
+                    <label for="reset-confirmar-senha">Confirmar Nova Senha</label>
+                    <input type="password" id="reset-confirmar-senha" required placeholder="Repita a nova senha">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-icon-text" onclick="hideResetPassword()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save"></i> Redefinir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -107,6 +154,10 @@
             <li data-tab="relatorios">
                 <i class="fas fa-chart-pie"></i>
                 <span>Relatórios</span>
+            </li>
+            <li data-tab="admin" id="nav-admin" style="display:none;">
+                <i class="fas fa-users-cog"></i>
+                <span>Admin</span>
             </li>
         </ul>
 
@@ -243,11 +294,12 @@
                                     <th>Data</th>
                                     <th>Quantidade</th>
                                     <th>Observação</th>
+                                    <th>Usuário</th>
                                     <th>Ação</th>
                                 </tr>
                             </thead>
                             <tbody id="entradas-list">
-                                <tr><td colspan="4" class="empty-state">Nenhuma entrada registrada</td></tr>
+                                <tr><td colspan="5" class="empty-state">Nenhuma entrada registrada</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -305,11 +357,12 @@
                                     <th>Qtd</th>
                                     <th>Preço Unit.</th>
                                     <th>Total</th>
+                                    <th>Usuário</th>
                                     <th>Ação</th>
                                 </tr>
                             </thead>
                             <tbody id="vendas-list">
-                                <tr><td colspan="5" class="empty-state">Nenhuma venda registrada</td></tr>
+                                <tr><td colspan="6" class="empty-state">Nenhuma venda registrada</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -366,11 +419,12 @@
                                     <th>Data</th>
                                     <th>Quantidade</th>
                                     <th>Motivo</th>
+                                    <th>Usuário</th>
                                     <th>Ação</th>
                                 </tr>
                             </thead>
                             <tbody id="quebrados-list">
-                                <tr><td colspan="4" class="empty-state">Nenhum registro de quebra</td></tr>
+                                <tr><td colspan="5" class="empty-state">Nenhum registro de quebra</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -510,6 +564,64 @@
                     <h3><i class="fas fa-chart-pie"></i> Distribuição do Ano</h3>
                     <div class="chart-container chart-container-pie">
                         <canvas id="chart-distribuicao"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════ ABA: ADMIN ══════════ -->
+        <section id="tab-admin" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-users-cog"></i> Painel de Administração</h1>
+                <p class="subtitle">Gerencie os usuários da fazenda</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card form-card">
+                    <h3><i class="fas fa-user-plus"></i> Criar Nova Conta</h3>
+                    <form id="form-criar-usuario">
+                        <div class="form-group">
+                            <label for="new-user-nome">Nome Completo</label>
+                            <input type="text" id="new-user-nome" required placeholder="Ex: João da Silva" minlength="2">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-user-username">Login (Usuário)</label>
+                            <input type="text" id="new-user-username" required placeholder="Ex: joao" minlength="3" autocapitalize="none">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-user-password">Senha</label>
+                            <input type="password" id="new-user-password" required placeholder="Mínimo 4 caracteres" minlength="4">
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="new-user-admin">
+                                <span>Administrador</span>
+                            </label>
+                            <small class="form-hint">Admins podem criar/remover contas</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> Criar Conta
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card list-card">
+                    <h3><i class="fas fa-users"></i> Usuários da Fazenda</h3>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Login</th>
+                                    <th>Tipo</th>
+                                    <th>Último Acesso</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-users-list">
+                                <tr><td colspan="5" class="empty-state">Carregando...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
