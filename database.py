@@ -200,6 +200,16 @@ _SQLITE_SCHEMA = '''
         usuario_nome TEXT DEFAULT ''
     );
 
+    CREATE TABLE IF NOT EXISTS despesas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        valor REAL NOT NULL CHECK(valor > 0),
+        descricao TEXT NOT NULL DEFAULT '',
+        data DATETIME DEFAULT CURRENT_TIMESTAMP,
+        mes_referencia TEXT NOT NULL,
+        usuario_id INTEGER,
+        usuario_nome TEXT DEFAULT ''
+    );
+
     CREATE TABLE IF NOT EXISTS resumo_mensal (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         mes_referencia TEXT NOT NULL UNIQUE,
@@ -207,6 +217,7 @@ _SQLITE_SCHEMA = '''
         total_saidas INTEGER NOT NULL DEFAULT 0,
         total_quebrados INTEGER NOT NULL DEFAULT 0,
         faturamento_total REAL NOT NULL DEFAULT 0.0,
+        total_despesas REAL NOT NULL DEFAULT 0.0,
         lucro_estimado REAL NOT NULL DEFAULT 0.0
     );
 
@@ -276,6 +287,16 @@ _POSTGRES_SCHEMA = '''
         usuario_nome TEXT DEFAULT ''
     );
 
+    CREATE TABLE IF NOT EXISTS despesas (
+        id SERIAL PRIMARY KEY,
+        valor DOUBLE PRECISION NOT NULL CHECK(valor > 0),
+        descricao TEXT NOT NULL DEFAULT '',
+        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        mes_referencia TEXT NOT NULL,
+        usuario_id INTEGER,
+        usuario_nome TEXT DEFAULT ''
+    );
+
     CREATE TABLE IF NOT EXISTS resumo_mensal (
         id SERIAL PRIMARY KEY,
         mes_referencia TEXT NOT NULL UNIQUE,
@@ -283,6 +304,7 @@ _POSTGRES_SCHEMA = '''
         total_saidas INTEGER NOT NULL DEFAULT 0,
         total_quebrados INTEGER NOT NULL DEFAULT 0,
         faturamento_total DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+        total_despesas DOUBLE PRECISION NOT NULL DEFAULT 0.0,
         lucro_estimado DOUBLE PRECISION NOT NULL DEFAULT 0.0
     );
 
@@ -335,6 +357,7 @@ def init_db():
         ('quebrados', 'usuario_id', 'INTEGER'),
         ('quebrados', 'usuario_nome', "TEXT DEFAULT ''"),
         ('usuarios', 'is_admin', 'INTEGER NOT NULL DEFAULT 0'),
+        ('resumo_mensal', 'total_despesas', 'REAL NOT NULL DEFAULT 0.0' if not USE_POSTGRES else 'DOUBLE PRECISION NOT NULL DEFAULT 0.0'),
     ]
 
     for table, col, col_type in _migrate_columns:

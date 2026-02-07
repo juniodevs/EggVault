@@ -12,6 +12,7 @@ from services.saida_service import SaidaService
 from services.preco_service import PrecoService
 from services.relatorio_service import RelatorioService
 from services.quebrado_service import QuebradoService
+from services.despesa_service import DespesaService
 from services.auth_service import AuthService
 from services.export_service import ExportService
 from datetime import datetime
@@ -390,6 +391,65 @@ def delete_quebrado(entry_id):
 
 
 # ═══════════════════════════════════════════
+# API — DESPESAS
+# ═══════════════════════════════════════════
+
+@app.route('/api/despesas', methods=['GET'])
+@login_required
+def get_despesas():
+    """Lista despesas filtradas por mês."""
+    try:
+        mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        despesas = DespesaService.listar(mes)
+        return jsonify({'success': True, 'data': despesas})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/despesas', methods=['POST'])
+@login_required
+def add_despesa():
+    """Registra uma nova despesa."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
+
+        valor = float(data.get('valor', 0))
+        descricao = data.get('descricao', '')
+        entry_id = DespesaService.registrar(
+            valor, descricao,
+            usuario_id=request.usuario['id'],
+            usuario_nome=request.usuario['nome'] or request.usuario['username']
+        )
+        return jsonify({
+            'success': True,
+            'id': entry_id,
+            'message': f'Despesa de R$ {valor:.2f} registrada com sucesso'
+        })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/despesas/<int:entry_id>', methods=['DELETE'])
+@login_required
+def delete_despesa(entry_id):
+    """Remove uma despesa."""
+    try:
+        valor = DespesaService.remover(entry_id)
+        return jsonify({
+            'success': True,
+            'message': f'Despesa de R$ {valor:.2f} removida'
+        })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ═══════════════════════════════════════════
 # API — RELATÓRIOS
 # ═══════════════════════════════════════════
 
@@ -431,6 +491,8 @@ def get_meses():
                 SELECT mes_referencia FROM saidas
                 UNION
                 SELECT mes_referencia FROM quebrados
+                UNION
+                SELECT mes_referencia FROM despesas
             ) AS t ORDER BY mes_referencia DESC
         """)
         meses = [row['mes_referencia'] for row in cursor.fetchall()]

@@ -4,6 +4,7 @@ from repositories.resumo_repo import ResumoRepository
 from repositories.entrada_repo import EntradaRepository
 from repositories.saida_repo import SaidaRepository
 from repositories.quebrado_repo import QuebradoRepository
+from repositories.despesa_repo import DespesaRepository
 
 
 class RelatorioService:
@@ -20,13 +21,14 @@ class RelatorioService:
         total_entradas = EntradaRepository.get_total_by_month(mes_referencia)
         totais_saidas = SaidaRepository.get_totals_by_month(mes_referencia)
         total_quebrados = QuebradoRepository.get_total_by_month(mes_referencia)
+        total_despesas = DespesaRepository.get_total_by_month(mes_referencia)
 
         total_saidas = totais_saidas['total_quantidade']
         faturamento = totais_saidas['total_valor']
-        lucro = faturamento  # Simplificado — pode incluir cálculo de custo
+        lucro = faturamento - total_despesas  # Faturamento líquido = faturamento - despesas
 
         ResumoRepository.upsert(
-            mes_referencia, total_entradas, total_saidas, total_quebrados, faturamento, lucro
+            mes_referencia, total_entradas, total_saidas, total_quebrados, faturamento, total_despesas, lucro
         )
 
     @staticmethod

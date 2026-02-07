@@ -346,6 +346,8 @@ body {
 .stat-icon.saida { background: var(--danger-light); color: var(--danger-dark); }
 .stat-icon.quebrado { background: #fce7f3; color: #be185d; }
 .stat-icon.faturamento { background: #ede9fe; color: #7c3aed; }
+.stat-icon.despesa { background: #fff7ed; color: #c2410c; }
+.stat-icon.lucro { background: #ecfdf5; color: #059669; }
 .stat-icon.preco { background: #e0f2fe; color: #0284c7; }
 
 .stat-info {
@@ -496,6 +498,19 @@ body {
 .quebrados-total-bar {
     background: linear-gradient(135deg, #fce7f3, #fbcfe8);
     color: #be185d;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.despesas-total-bar {
+    background: linear-gradient(135deg, #fff7ed, #fed7aa);
+    color: #c2410c;
     padding: 12px 16px;
     border-radius: var(--radius-sm);
     font-size: 0.9rem;

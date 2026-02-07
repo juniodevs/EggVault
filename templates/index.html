@@ -147,6 +147,10 @@
                 <i class="fas fa-heart-crack"></i>
                 <span>Quebrados</span>
             </li>
+            <li data-tab="despesas">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Despesas</span>
+            </li>
             <li data-tab="precos">
                 <i class="fas fa-tags"></i>
                 <span>Preços</span>
@@ -432,6 +436,64 @@
             </div>
         </section>
 
+        <!-- ══════════ ABA: DESPESAS ══════════ -->
+        <section id="tab-despesas" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-file-invoice-dollar"></i> Despesas</h1>
+                <p class="subtitle">Registre despesas para subtrair do faturamento</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card form-card">
+                    <h3><i class="fas fa-plus-circle"></i> Nova Despesa</h3>
+                    <form id="form-despesa">
+                        <div class="form-group">
+                            <label for="despesa-valor">Valor (R$)</label>
+                            <input type="number" id="despesa-valor" step="0.01" min="0.01" required placeholder="Ex: 150.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="despesa-descricao">Descrição</label>
+                            <textarea id="despesa-descricao" rows="3" required placeholder="Ex: Compra de ração, manutenção..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-file-invoice-dollar"></i> Registrar Despesa
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-list"></i> Despesas do Mês</h3>
+                        <div class="month-filter">
+                            <button class="btn btn-icon" onclick="changeMonth('despesas', -1)"><i class="fas fa-chevron-left"></i></button>
+                            <span id="despesas-month-label" class="month-label">—</span>
+                            <button class="btn btn-icon" onclick="changeMonth('despesas', 1)"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="despesas-total-bar">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        Total despesas neste mês: <strong id="despesas-month-total">R$ 0,00</strong>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Valor</th>
+                                    <th>Descrição</th>
+                                    <th>Usuário</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="despesas-list">
+                                <tr><td colspan="5" class="empty-state">Nenhuma despesa registrada</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- ══════════ ABA: PREÇOS ══════════ -->
         <section id="tab-precos" class="tab-content">
             <div class="page-header">
@@ -536,6 +598,20 @@
                     <div class="stat-info">
                         <span class="stat-value" id="report-faturamento">R$ 0,00</span>
                         <span class="stat-label">Total Faturado</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-file-invoice-dollar stat-icon despesa"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="report-despesas">R$ 0,00</span>
+                        <span class="stat-label">Total Despesas</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-coins stat-icon lucro"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="report-lucro">R$ 0,00</span>
+                        <span class="stat-label">Lucro Líquido</span>
                     </div>
                 </div>
                 <div class="stat-card">

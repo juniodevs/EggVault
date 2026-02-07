@@ -13,6 +13,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from repositories.entrada_repo import EntradaRepository
 from repositories.saida_repo import SaidaRepository
 from repositories.quebrado_repo import QuebradoRepository
+from repositories.despesa_repo import DespesaRepository
 from repositories.resumo_repo import ResumoRepository
 
 
@@ -42,6 +43,7 @@ class ExportService:
         entradas = EntradaRepository.get_by_month(mes_referencia)
         saidas = SaidaRepository.get_by_month(mes_referencia)
         quebrados = QuebradoRepository.get_by_month(mes_referencia)
+        despesas = DespesaRepository.get_by_month(mes_referencia)
 
         wb = Workbook()
         header_font = Font(bold=True, color='FFFFFF', size=11)
@@ -76,6 +78,8 @@ class ExportService:
             ('Total de Saídas (Vendas)', resumo['total_saidas']),
             ('Total de Quebrados', resumo.get('total_quebrados', 0)),
             ('Faturamento Total', f"R$ {resumo['faturamento_total']:.2f}"),
+            ('Total Despesas', f"R$ {resumo.get('total_despesas', 0):.2f}"),
+            ('Lucro Líquido', f"R$ {resumo.get('lucro_estimado', 0):.2f}"),
             ('Saldo do Mês (ovos)', resumo['total_entradas'] - resumo['total_saidas'] - resumo.get('total_quebrados', 0)),
         ]
 
@@ -149,6 +153,25 @@ class ExportService:
         ws_q.column_dimensions['B'].width = 14
         ws_q.column_dimensions['C'].width = 35
 
+        # ── Aba: Despesas ──
+        ws_d = wb.create_sheet('Despesas')
+        ws_d.sheet_properties.tabColor = 'C2410C'
+        headers_d = ['Data', 'Valor', 'Descrição']
+        for j, h in enumerate(headers_d, 1):
+            cell = ws_d.cell(row=1, column=j, value=h)
+            cell.font = header_font
+            cell.fill = PatternFill(start_color='C2410C', end_color='C2410C', fill_type='solid')
+            cell.alignment = Alignment(horizontal='center')
+
+        for i, d in enumerate(despesas, start=2):
+            ws_d.cell(row=i, column=1, value=d['data']).border = border
+            ws_d.cell(row=i, column=2, value=f"R$ {d['valor']:.2f}").border = border
+            ws_d.cell(row=i, column=3, value=d.get('descricao', '')).border = border
+
+        ws_d.column_dimensions['A'].width = 22
+        ws_d.column_dimensions['B'].width = 16
+        ws_d.column_dimensions['C'].width = 35
+
         # Salvar em memória
         output = io.BytesIO()
         wb.save(output)
@@ -167,6 +190,7 @@ class ExportService:
         entradas = EntradaRepository.get_by_month(mes_referencia)
         saidas = SaidaRepository.get_by_month(mes_referencia)
         quebrados = QuebradoRepository.get_by_month(mes_referencia)
+        despesas = DespesaRepository.get_by_month(mes_referencia)
 
         output = io.BytesIO()
         doc = SimpleDocTemplate(output, pagesize=A4, topMargin=20*mm, bottomMargin=20*mm)
@@ -204,6 +228,8 @@ class ExportService:
             ['Total de Saídas', str(resumo['total_saidas'])],
             ['Total Quebrados', str(resumo.get('total_quebrados', 0))],
             ['Faturamento', f"R$ {resumo['faturamento_total']:.2f}"],
+            ['Total Despesas', f"R$ {resumo.get('total_despesas', 0):.2f}"],
+            ['Lucro Líquido', f"R$ {resumo.get('lucro_estimado', 0):.2f}"],
             ['Saldo (ovos)', str(saldo)],
         ]
         t = Table(resumo_data, colWidths=[120*mm, 50*mm])
@@ -287,6 +313,27 @@ class ExportService:
             ]))
             elements.append(t)
 
+        # ── Despesas ──
+        if despesas:
+            elements.append(Paragraph(f'Despesas ({len(despesas)} registros)', section_style))
+            d_data = [['Data', 'Valor', 'Descrição']]
+            for d in despesas:
+                data_fmt = datetime.fromisoformat(d['data']).strftime('%d/%m/%Y %H:%M') if d.get('data') else '—'
+                d_data.append([data_fmt, f"R$ {d['valor']:.2f}", d.get('descricao', '') or '—'])
+
+            t = Table(d_data, colWidths=[45*mm, 30*mm, 95*mm])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C2410C')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E2E8F0')),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#FFF7ED')]),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ]))
+            elements.append(t)
+
         doc.build(elements)
         output.seek(0)
         return output
@@ -320,7 +367,7 @@ class ExportService:
         ws['A1'].font = title_font
         ws['A1'].alignment = Alignment(horizontal='center')
 
-        headers = ['Mês', 'Entradas', 'Saídas', 'Quebrados', 'Faturamento', 'Saldo']
+        headers = ['Mês', 'Entradas', 'Saídas', 'Quebrados', 'Faturamento', 'Despesas', 'Lucro Líquido', 'Saldo']
         for j, h in enumerate(headers, 1):
             cell = ws.cell(row=3, column=j, value=h)
             cell.font = header_font
@@ -335,9 +382,11 @@ class ExportService:
             ws.cell(row=i, column=3, value=r['total_saidas']).border = border
             ws.cell(row=i, column=4, value=r.get('total_quebrados', 0)).border = border
             ws.cell(row=i, column=5, value=f"R$ {r['faturamento_total']:.2f}").border = border
-            ws.cell(row=i, column=6, value=saldo).border = border
+            ws.cell(row=i, column=6, value=f"R$ {r.get('total_despesas', 0):.2f}").border = border
+            ws.cell(row=i, column=7, value=f"R$ {r.get('lucro_estimado', 0):.2f}").border = border
+            ws.cell(row=i, column=8, value=saldo).border = border
 
-        for col, w in [('A', 20), ('B', 12), ('C', 12), ('D', 12), ('E', 16), ('F', 10)]:
+        for col, w in [('A', 20), ('B', 12), ('C', 12), ('D', 12), ('E', 16), ('F', 16), ('G', 16), ('H', 10)]:
             ws.column_dimensions[col].width = w
 
         output = io.BytesIO()

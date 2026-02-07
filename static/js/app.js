@@ -3,6 +3,7 @@ const currentMonth = {
     entradas: getCurrentMonth(),
     vendas: getCurrentMonth(),
     quebrados: getCurrentMonth(),
+    despesas: getCurrentMonth(),
     relatorios: getCurrentMonth()
 };
 const charts = {};
@@ -398,6 +399,7 @@ async function loadTabData(tabName) {
         case 'entradas':   await loadEntradas(); break;
         case 'vendas':     await loadVendas(); break;
         case 'quebrados':  await loadQuebrados(); break;
+        case 'despesas':   await loadDespesas(); break;
         case 'precos':     await loadPrecos(); break;
         case 'relatorios': await loadRelatorios(); break;
         case 'admin':      await loadAdminUsers(); break;
@@ -617,6 +619,59 @@ async function undoQuebrado(entryId, quantidade) {
     }
 }
 
+// ═══════════════════════════════════════════
+// ABA — DESPESAS
+// ═══════════════════════════════════════════
+
+async function loadDespesas() {
+    try {
+        const mes = currentMonth.despesas;
+        document.getElementById('despesas-month-label').textContent = formatMonthLabel(mes);
+
+        const res = await api(`/api/despesas?mes=${mes}`);
+        const tbody = document.getElementById('despesas-list');
+
+        // Calcular total do mês
+        const totalMes = res.data.reduce((sum, d) => sum + (d.valor || 0), 0);
+        document.getElementById('despesas-month-total').textContent = formatCurrency(totalMes);
+
+        if (res.data.length === 0) {
+            tbody.innerHTML =
+                '<tr><td colspan="5" class="empty-state">Nenhuma despesa registrada neste mês</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = res.data.map(d => `
+            <tr>
+                <td>${formatDate(d.data)}</td>
+                <td><strong>${formatCurrency(d.valor)}</strong></td>
+                <td>${d.descricao || '—'}</td>
+                <td><span class="user-badge">${d.usuario_nome || '—'}</span></td>
+                <td>
+                    <button class="btn-undo" onclick="undoDespesa(${d.id}, ${d.valor})" title="Remover despesa">
+                        <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (e) {
+        console.error('Erro ao carregar despesas:', e);
+    }
+}
+
+async function undoDespesa(entryId, valor) {
+    const ok = await customConfirm('Remover Despesa', `Remover despesa de ${formatCurrency(valor)}? O valor será devolvido ao faturamento.`);
+    if (!ok) return;
+    try {
+        const res = await api(`/api/despesas/${entryId}`, { method: 'DELETE' });
+        showToast(res.message, 'success');
+        await loadDespesas();
+    } catch (e) {
+        // Toast já exibido
+    }
+}
+
 async function undoVenda(saleId, quantidade) {
     const ok = await customConfirm('Desfazer Venda', `Desfazer venda de ${quantidade} ovo(s)? Os ovos serão devolvidos ao estoque.`);
     if (!ok) return;
@@ -745,6 +800,10 @@ async function loadReport() {
         document.getElementById('report-quebrados').textContent = rel.total_quebrados || 0;
         document.getElementById('report-faturamento').textContent =
             formatCurrency(rel.faturamento_total);
+        document.getElementById('report-despesas').textContent =
+            formatCurrency(rel.total_despesas || 0);
+        document.getElementById('report-lucro').textContent =
+            formatCurrency(rel.lucro_estimado || 0);
         document.getElementById('report-saldo').textContent =
             rel.total_entradas - rel.total_saidas - (rel.total_quebrados || 0);
 
@@ -940,6 +999,7 @@ function changeMonth(section, delta) {
     if (section === 'entradas') loadEntradas();
     if (section === 'vendas') loadVendas();
     if (section === 'quebrados') loadQuebrados();
+    if (section === 'despesas') loadDespesas();
 }
 
 // ═══════════════════════════════════════════
@@ -1235,6 +1295,45 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(res.message, 'success');
             e.target.reset();
             await loadQuebrados();
+
+        } catch (err) {
+            // Toast já exibido pelo api()
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    // ── Formulário: Despesas ──
+    document.getElementById('form-despesa').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="spinner"></span> Registrando...';
+            btn.disabled = true;
+
+            const valor = parseFloat(document.getElementById('despesa-valor').value);
+            const descricao = document.getElementById('despesa-descricao').value.trim();
+
+            if (isNaN(valor) || valor <= 0) {
+                showToast('Valor deve ser um número positivo', 'error');
+                return;
+            }
+            if (!descricao) {
+                showToast('Descrição é obrigatória', 'error');
+                return;
+            }
+
+            const res = await api('/api/despesas', {
+                method: 'POST',
+                body: JSON.stringify({ valor, descricao })
+            });
+
+            showToast(res.message, 'success');
+            e.target.reset();
+            await loadDespesas();
 
         } catch (err) {
             // Toast já exibido pelo api()
