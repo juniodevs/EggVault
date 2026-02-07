@@ -431,7 +431,7 @@ def get_meses():
                 SELECT mes_referencia FROM saidas
                 UNION
                 SELECT mes_referencia FROM quebrados
-            ) ORDER BY mes_referencia DESC
+            ) AS t ORDER BY mes_referencia DESC
         """)
         meses = [row['mes_referencia'] for row in cursor.fetchall()]
         conn.close()

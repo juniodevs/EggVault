@@ -69,6 +69,7 @@ def _cleanup_db(db_path):
 def _start_flask_server(port, db_path):
     """Inicia o servidor Flask em uma thread daemon."""
     os.environ["OVOS_DB_PATH"] = db_path
+    os.environ["DATABASE_URL"] = ""  # Forçar SQLite nos testes e2e
     
     import database
     importlib.reload(database)

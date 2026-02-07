@@ -11,6 +11,7 @@ import tempfile
 
 # Usar arquivo temporário para o banco de testes
 TEST_DB_PATH = os.path.join(tempfile.gettempdir(), 'ovos_test.db')
+os.environ['DATABASE_URL'] = ''   # Forçar SQLite nos testes
 os.environ['OVOS_DB_PATH'] = TEST_DB_PATH
 
 # Adicionar diretório raiz ao path

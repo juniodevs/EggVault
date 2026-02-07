@@ -1,6 +1,8 @@
 Flask==3.0.0
 openpyxl==3.1.5
 reportlab==4.4.9
+psycopg2-binary>=2.9.0
+python-dotenv>=1.0.0
 
 # ── Testes E2E (Playwright) ──
 pytest>=8.0.0
