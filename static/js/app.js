@@ -451,6 +451,8 @@ async function loadEstoque() {
         document.getElementById('stat-quebrados-mes').textContent = relatorio.total_quebrados || 0;
         document.getElementById('stat-faturamento-mes').textContent =
             formatCurrency(relatorio.faturamento_total);
+        document.getElementById('stat-despesas-mes').textContent =
+            formatCurrency(relatorio.total_despesas || 0);
         document.getElementById('stat-preco-atual').textContent =
             preco ? formatCurrency(preco.preco_unitario) : 'Não definido';
 
