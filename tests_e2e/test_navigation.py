@@ -105,7 +105,15 @@ class TestEstoquePage:
         """Quantidade do estoque deve ser exibida."""
         qty = authenticated_page.locator("#stock-quantity")
         assert qty.is_visible()
-        # Valor deve ser numérico
+        
+        authenticated_page.wait_for_function(
+            """() => {
+                const el = document.getElementById('stock-quantity');
+                return el && el.innerText !== '...';
+            }""",
+            timeout=10000
+        )
+    
         text = qty.inner_text()
         assert text.isdigit()
 
@@ -159,7 +167,6 @@ class TestMobileResponsive:
         pg.wait_for_selector("#login-overlay", state="hidden", timeout=15000)
 
         sidebar = pg.locator("#sidebar")
-        # Em mobile, sidebar não deve ter a classe "open" por padrão
         classes = sidebar.get_attribute("class") or ""
         assert "open" not in classes
 

@@ -35,6 +35,7 @@ class TestVendaForm:
         assert page.locator("#form-venda").is_visible()
         assert page.locator("#venda-quantidade").is_visible()
         assert page.locator("#venda-preco").is_visible()
+        assert page.locator("#venda-total").is_visible()
 
     def test_venda_stock_info_bar(self, authenticated_page):
         """Barra de info de estoque deve estar visível."""
@@ -57,13 +58,11 @@ class TestVendaForm:
         page.fill("#venda-preco", "1.50")
         page.click('#form-venda button[type="submit"]')
 
-        # Toast de sucesso
         toast = page.locator("#toast-container .toast, #toast-container div")
         toast.first.wait_for(state="visible", timeout=10000)
 
         page.wait_for_timeout(1000)
 
-        # Lista deve mostrar a venda
         vendas_list = page.locator("#vendas-list")
         text = vendas_list.inner_text()
         assert "10" in text
@@ -79,13 +78,28 @@ class TestVendaForm:
         page.fill("#venda-quantidade", "10")
         page.fill("#venda-preco", "2.00")
 
-        # Disparar evento de input para forçar cálculo
-        page.locator("#venda-quantidade").dispatch_event("input")
+        page.locator("#venda-preco").dispatch_event("input")
         page.wait_for_timeout(300)
 
-        total = page.locator("#venda-total").inner_text()
-        # Deve conter algo como "R$ 20,00" ou "20.00"
-        assert "20" in total or "R$" in total
+        total = page.locator("#venda-total").input_value()
+        assert "20" in total
+
+    def test_venda_calc_preco_from_total(self, authenticated_page):
+        """Preço unitário deve ser calculado ao digitar valor total."""
+        page = authenticated_page
+        _add_stock(page, 50)
+
+        page.click('li[data-tab="vendas"]')
+        page.wait_for_timeout(500)
+
+        page.fill("#venda-quantidade", "12")
+        page.fill("#venda-total", "10,80")
+
+        page.locator("#venda-total").dispatch_event("input")
+        page.wait_for_timeout(300)
+
+        preco = page.locator("#venda-preco").input_value()
+        assert "0,90" in preco or "0.90" in preco
 
     def test_venda_reduce_stock(self, authenticated_page):
         """Venda deve reduzir o estoque."""
