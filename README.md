@@ -76,12 +76,12 @@ python -m unittest tests.test_app -v
 4. **Executar backup:**
    ```bash
    # Manual
-   python backup_manual.py
+   python scripts_backup/backup_manual.py
    
    # Automático (diário às 3h)
-   python backup_agendado.py
+   python scripts_backup/backup_agendado.py
    
-   # Ou use Task Scheduler (Windows) com executar_backup.bat
+   # Ou use Task Scheduler (Windows) com scripts_backup/executar_backup.bat
    ```
 
 ### Recursos
@@ -91,6 +91,41 @@ python -m unittest tests.test_app -v
 - ✅ Upload para Google Drive
 - ✅ Mantém 5 backups locais mais recentes
 - ✅ Histórico completo no Google Drive
+
+### 🔍 Verificar Sistema de Backup
+
+Para garantir que o sistema de backup está funcionando corretamente:
+
+```bash
+# Verificação básica (sem executar backup)
+python scripts_backup/verificar_backup.py
+
+# Verificação com teste de backup local (sem upload)
+python scripts_backup/verificar_backup.py --test
+
+# Verificação completa com backup e upload
+python scripts_backup/verificar_backup.py --full-test
+
+# Status rápido
+python scripts_backup/status_backup.py
+```
+
+Ou no Windows:
+```bash
+# Duplo clique em:
+scripts_backup\verificar_backup.bat
+
+# Ou com argumentos:
+scripts_backup\verificar_backup.bat --test
+```
+
+**O script verifica:**
+- ✅ Diretório de backups existe
+- ✅ Backups existentes e idade
+- ✅ Conexão com banco de dados
+- ✅ Configuração do Google Drive
+- ✅ Instalação do pg_dump (PostgreSQL)
+- ✅ Teste de criação de backup (opcional)
 
 ## 🏗️ Arquitetura
 
@@ -111,6 +146,13 @@ Egg/
 │   ├── preco_service.py
 │   ├── relatorio_service.py
 │   └── backup_service.py          # Serviço de backup
+├── scripts_backup/                 # Scripts de backup e verificação
+│   ├── backup_manual.py           # Backup manual
+│   ├── backup_agendado.py         # Backup agendado
+│   ├── executar_backup.bat        # Atalho Windows
+│   ├── verificar_backup.py        # Verificação completa
+│   ├── status_backup.py           # Status rápido
+│   └── verificar_backup.bat       # Atalho verificação
 ├── templates/
 │   └── index.html                  # Interface SPA
 ├── static/
@@ -118,7 +160,6 @@ Egg/
 │   └── js/app.js                  # Frontend JavaScript
 ├── tests/
 │   └── test_app.py                # Testes unitários e funcionais
-├── backup_manual.py                # Script de backup
 ├── requirements.txt
 └── README.md
 ```

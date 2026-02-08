@@ -3,8 +3,12 @@
 Execute este script para fazer backup imediato do banco de dados.
 """
 
-from services.backup_service import criar_backup
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from services.backup_service import criar_backup
 
 
 def main():

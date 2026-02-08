@@ -3,8 +3,13 @@
 Configure este script para rodar automaticamente (cronjob, Task Scheduler, etc).
 """
 
+import sys
+from pathlib import Path
 import schedule
 import time
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from services.backup_service import criar_backup
 
 

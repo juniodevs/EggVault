@@ -60,7 +60,7 @@ class BackupService:
     def backup_postgres(self):
         """Cria backup do PostgreSQL / usando pg_dump."""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_file = self.backup_dir / f'postgres_backup_{timestamp}.sql'
+        backup_file = self.backup_dir / f'EggVault_postgres_backup_{timestamp}.sql'
         
         print(f"📦 Criando backup do PostgreSQL")
         
@@ -105,7 +105,7 @@ class BackupService:
             return None
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_file = self.backup_dir / f'sqlite_backup_{timestamp}.db'
+        backup_file = self.backup_dir / f'EggVault_sqlite_backup_{timestamp}.db'
         
         print(f"📦 Criando backup do SQLite...")
         
