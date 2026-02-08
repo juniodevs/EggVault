@@ -1,0 +1,35 @@
+# Testes
+tests/
+tests_e2e/
+test-results/
+.pytest_cache/
+pytest.ini
+playwright_config.py
+run_tests.py
+conftest.py
+
+# Scripts de backup local
+scripts_backup/
+backups/
+
+# Arquivos de desenvolvimento
+requirements-dev.txt
+*.pyc
+__pycache__/
+.vscode/
+.idea/
+*.log
+
+# Banco de dados local
+*.db
+*.db-wal
+*.db-shm
+
+# Ambientes virtuais
+venv/
+env/
+.env.local
+
+# Git
+.git/
+.gitignore

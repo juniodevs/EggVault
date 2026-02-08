@@ -1,0 +1,17 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# DEPENDÊNCIAS DE DESENVOLVIMENTO E TESTE
+# Use: pip install -r requirements-dev.txt
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Dependências de produção
+-r requirements.txt
+
+# ── Testes E2E (Playwright) ──
+pytest>=8.0.0
+playwright>=1.40.0
+pytest-playwright>=0.5.0
+pytest-xdist>=3.5.0
+
+# ── Ferramentas de Dev ──
+autopep8>=2.0.0
+flake8>=7.0.0

@@ -1,0 +1,12 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# DEPENDÊNCIAS MÍNIMAS DE PRODUÇÃO (SEM GOOGLE DRIVE)
+# Use este arquivo se quiser reduzir ainda mais o tamanho
+# ═══════════════════════════════════════════════════════════════════════════
+
+Flask==3.0.0
+openpyxl==3.1.5
+reportlab==4.4.9
+python-dotenv>=1.0.0
+
+# ── PostgreSQL (apenas para produção) ──
+psycopg2-binary>=2.9.0

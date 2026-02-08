@@ -14,8 +14,19 @@ Sistema completo de gerenciamento de ovos com controle de estoque, vendas, entra
 
 ### 1. Instalar dependências
 
+**Para desenvolvimento (inclui testes):**
+```bash
+pip install -r requirements-dev.txt
+```
+
+**Para produção:**
 ```bash
 pip install -r requirements.txt
+```
+
+**Para produção mínima (sem Google Drive):**
+```bash
+pip install -r requirements-prod-minimal.txt
 ```
 
 ### 2. Executar o aplicativo
@@ -34,6 +45,17 @@ O banco de dados SQLite (`ovos.db`) será criado automaticamente na primeira exe
 
 ## 🧪 Executar Testes
 
+**Instalar dependências de teste:**
+```bash
+pip install -r requirements-dev.txt
+```
+
+**Executar testes E2E:**
+```bash
+pytest tests_e2e/ -v
+```
+
+**Executar testes unitários:**
 ```bash
 python -m pytest tests/ -v
 ```
@@ -43,6 +65,23 @@ Ou com unittest:
 ```bash
 python -m unittest tests.test_app -v
 ```
+
+## 🌐 Deploy no Vercel
+
+O projeto está configurado para deploy automático no Vercel:
+
+1. **Conecte seu repositório ao Vercel**
+2. **Configure as variáveis de ambiente:**
+   - `DATABASE_URL` - Connection string do PostgreSQL (Vercel Postgres ou outro)
+   - `FLASK_SECRET_KEY` - Chave secreta para sessões
+   - Outras variáveis necessárias (Google Drive, etc.)
+
+3. **O Vercel vai:**
+   - Usar `requirements.txt` (apenas dependências de produção)
+   - Excluir testes e arquivos desnecessários via `.vercelignore`
+   - Manter o tamanho da function abaixo de 250 MB
+
+**Nota:** Se ainda houver erro de tamanho, use `requirements-prod-minimal.txt` renomeando para `requirements.txt` no deploy.
 
 ## 🔒 Backup Automático para Google Drive
 
