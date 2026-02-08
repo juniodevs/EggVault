@@ -466,15 +466,30 @@ body {
     min-height: 80px;
 }
 
-.total-display {
+.total-input {
     font-size: 1.8rem;
     font-weight: 800;
     color: var(--primary);
     padding: 16px;
     background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+    border: 2px solid transparent;
     border-radius: var(--radius-sm);
     text-align: center;
     letter-spacing: -0.02em;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.total-input:hover {
+    background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+    border-color: var(--primary);
+}
+
+.total-input:focus {
+    background: #ffffff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    outline: none;
 }
 
 .stock-info-bar {
@@ -986,7 +1001,7 @@ tbody tr:hover {
         font-size: 1.35rem;
     }
 
-    .total-display {
+    .total-input {
         font-size: 1.4rem;
     }
 

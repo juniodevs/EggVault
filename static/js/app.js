@@ -573,10 +573,38 @@ async function loadVendas() {
     }
 }
 
+let lastEditedField = null;
+
+function parseDecimalInput(value) {
+    return parseFloat(value.toString().replace(',', '.')) || 0;
+}
+
+function formatDecimalInput(value) {
+    return value.toFixed(2).replace('.', ',');
+}
+
 function updateVendaTotal() {
+    if (lastEditedField === 'total') return; // Evita loop
+    
     const qty = parseInt(document.getElementById('venda-quantidade').value) || 0;
-    const price = parseFloat(document.getElementById('venda-preco').value) || 0;
-    document.getElementById('venda-total').textContent = formatCurrency(qty * price);
+    const price = parseDecimalInput(document.getElementById('venda-preco').value);
+    const total = qty * price;
+    
+    lastEditedField = 'price';
+    document.getElementById('venda-total').value = formatDecimalInput(total);
+}
+
+function updateVendaUnitPrice() {
+    if (lastEditedField === 'price') return; // Evita loop
+    
+    const qty = parseInt(document.getElementById('venda-quantidade').value) || 0;
+    const total = parseDecimalInput(document.getElementById('venda-total').value);
+    
+    if (qty > 0) {
+        const unitPrice = total / qty;
+        lastEditedField = 'total';
+        document.getElementById('venda-preco').value = formatDecimalInput(unitPrice);
+    }
 }
 
 // ═══════════════════════════════════════════
@@ -1276,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
 
             const quantidade = parseInt(document.getElementById('venda-quantidade').value);
-            const preco_unitario = parseFloat(document.getElementById('venda-preco').value);
+            const preco_unitario = parseDecimalInput(document.getElementById('venda-preco').value);
 
             if (isNaN(quantidade) || quantidade <= 0) {
                 showToast('Quantidade deve ser um número positivo', 'error');
@@ -1294,7 +1322,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showToast(res.message, 'success');
             document.getElementById('venda-quantidade').value = '';
-            document.getElementById('venda-total').textContent = 'R$ 0,00';
+            document.getElementById('venda-preco').value = '';
+            document.getElementById('venda-total').value = '';
+            lastEditedField = null;
             await loadVendas();
 
         } catch (err) {
@@ -1305,9 +1335,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ── Auto-cálculo de valor total na venda ──
-    document.getElementById('venda-quantidade').addEventListener('input', updateVendaTotal);
-    document.getElementById('venda-preco').addEventListener('input', updateVendaTotal);
+    document.getElementById('venda-quantidade').addEventListener('input', () => {
+        if (lastEditedField === 'total') {
+            updateVendaUnitPrice();
+        } else {
+            updateVendaTotal();
+        }
+    });
+    
+    document.getElementById('venda-preco').addEventListener('input', () => {
+        lastEditedField = 'price';
+        updateVendaTotal();
+    });
+    
+    document.getElementById('venda-total').addEventListener('input', () => {
+        lastEditedField = 'total';
+        updateVendaUnitPrice();
+    });
 
     // ── Formulário: Quebrados ──
     document.getElementById('form-quebrado').addEventListener('submit', async (e) => {
