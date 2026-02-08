@@ -63,7 +63,7 @@ class TestVendaForm:
 
         page.wait_for_timeout(1000)
 
-        vendas_list = page.locator("#vendas-list")
+        vendas_list = page.locator("#vendas-hoje-list")
         text = vendas_list.inner_text()
         assert "10" in text
 

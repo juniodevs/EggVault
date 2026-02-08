@@ -133,3 +133,100 @@ class TestChangePassword:
         assert page.locator("#senha-atual").is_visible()
         assert page.locator("#nova-senha").is_visible()
         assert page.locator("#confirmar-senha").is_visible()
+
+
+class TestAdminConfiguracoes:
+    """Testes de configurações administrativas."""
+
+    def test_configuracoes_form_visible(self, authenticated_page):
+        """Formulário de configurações deve estar visível na aba admin."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        assert page.locator("#form-configuracoes").is_visible()
+        assert page.locator("#config-consumo-habilitado").is_visible()
+
+    def test_habilitar_consumo(self, authenticated_page):
+        """Deve habilitar a aba de consumo através das configurações."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        # Verificar estado inicial do checkbox
+        checkbox = page.locator("#config-consumo-habilitado")
+        
+        # Marcar o checkbox se não estiver marcado
+        if not checkbox.is_checked():
+            checkbox.check()
+        
+        # Salvar configurações
+        page.click('#form-configuracoes button[type="submit"]')
+        
+        # Aguardar toast de sucesso
+        toast = page.locator("#toast-container .toast, #toast-container div")
+        toast.first.wait_for(state="visible", timeout=10000)
+        
+        page.wait_for_timeout(1500)
+
+        # Verificar se a aba de consumo ficou visível
+        nav_consumo = page.locator('li[data-tab="consumo"]')
+        assert nav_consumo.is_visible(), "Aba de consumo deveria estar visível após habilitação"
+
+    def test_desabilitar_consumo(self, authenticated_page):
+        """Deve desabilitar a aba de consumo através das configurações."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        # Primeiro habilitar
+        checkbox = page.locator("#config-consumo-habilitado")
+        if not checkbox.is_checked():
+            checkbox.check()
+            page.click('#form-configuracoes button[type="submit"]')
+            page.wait_for_timeout(1500)
+
+        # Agora desabilitar
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+        
+        checkbox = page.locator("#config-consumo-habilitado")
+        if checkbox.is_checked():
+            checkbox.uncheck()
+        
+        page.click('#form-configuracoes button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        # Verificar se a aba de consumo ficou oculta
+        nav_consumo = page.locator('li[data-tab="consumo"]')
+        is_hidden = not nav_consumo.is_visible()
+        assert is_hidden, "Aba de consumo deveria estar oculta após desabilitação"
+
+    def test_configuracoes_persistem(self, authenticated_page):
+        """Configurações devem persistir após recarregar a página."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        # Habilitar consumo
+        checkbox = page.locator("#config-consumo-habilitado")
+        if not checkbox.is_checked():
+            checkbox.check()
+        
+        page.click('#form-configuracoes button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        # Recarregar página
+        page.reload()
+        page.wait_for_timeout(2000)
+
+        # Verificar se configuração persistiu
+        nav_consumo = page.locator('li[data-tab="consumo"]')
+        assert nav_consumo.is_visible(), "Configuração de consumo habilitado deveria persistir após reload"
+
+        # Verificar no formulário admin
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+        
+        checkbox = page.locator("#config-consumo-habilitado")
+        assert checkbox.is_checked(), "Checkbox deveria estar marcado após reload"

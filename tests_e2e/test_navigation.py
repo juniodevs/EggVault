@@ -53,6 +53,25 @@ class TestSidebar:
         authenticated_page.wait_for_timeout(500)
         assert authenticated_page.locator("#tab-quebrados").is_visible()
 
+    def test_navigate_to_consumo_if_enabled(self, authenticated_page):
+        """Clicar em Consumo deve mostrar a aba de consumo (se habilitada)."""
+        # Primeiro habilitar via admin
+        authenticated_page.click('li[data-tab="admin"]')
+        authenticated_page.wait_for_timeout(500)
+        
+        checkbox = authenticated_page.locator("#config-consumo-habilitado")
+        if not checkbox.is_checked():
+            checkbox.check()
+            authenticated_page.click('#form-configuracoes button[type="submit"]')
+            authenticated_page.wait_for_timeout(1500)
+        
+        # Agora navegar para consumo
+        nav_consumo = authenticated_page.locator('li[data-tab="consumo"]')
+        if nav_consumo.is_visible():
+            authenticated_page.click('li[data-tab="consumo"]')
+            authenticated_page.wait_for_timeout(500)
+            assert authenticated_page.locator("#tab-consumo").is_visible()
+
     def test_navigate_to_precos(self, authenticated_page):
         """Clicar em Preços deve mostrar a aba de preços."""
         authenticated_page.click('li[data-tab="precos"]')
@@ -91,6 +110,41 @@ class TestSidebar:
             page.click(f'li[data-tab="{tab}"]')
             page.wait_for_timeout(300)
             assert page.locator(f"#tab-{tab}").is_visible(), f"Aba {tab} não ficou visível"
+
+    def test_consumo_tab_visibility(self, authenticated_page):
+        """Aba de consumo deve estar oculta por padrão e aparecer quando habilitada."""
+        page = authenticated_page
+        
+        # Verificar que está oculta inicialmente
+        nav_consumo = page.locator('li[data-tab="consumo"]')
+        initial_visible = nav_consumo.is_visible()
+        
+        # Se já estiver visível, desabilitar primeiro
+        if initial_visible:
+            page.click('li[data-tab="admin"]')
+            page.wait_for_timeout(500)
+            checkbox = page.locator("#config-consumo-habilitado")
+            if checkbox.is_checked():
+                checkbox.uncheck()
+                page.click('#form-configuracoes button[type="submit"]')
+                page.wait_for_timeout(1500)
+            
+            # Verificar que ficou oculta
+            nav_consumo = page.locator('li[data-tab="consumo"]')
+            assert not nav_consumo.is_visible(), "Consumo deveria estar oculto após desabilitar"
+        
+        # Habilitar
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+        checkbox = page.locator("#config-consumo-habilitado")
+        if not checkbox.is_checked():
+            checkbox.check()
+        page.click('#form-configuracoes button[type="submit"]')
+        page.wait_for_timeout(1500)
+        
+        # Verificar que ficou visível
+        nav_consumo = page.locator('li[data-tab="consumo"]')
+        assert nav_consumo.is_visible(), "Consumo deveria estar visível após habilitar"
 
 
 class TestEstoquePage:

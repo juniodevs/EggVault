@@ -319,6 +319,150 @@ class TestQuebradosAPI:
 
 
 # ═══════════════════════════════════════════
+# CONSUMO
+# ═══════════════════════════════════════════
+
+class TestConsumoAPI:
+    """Testes da API de consumo pessoal."""
+
+    def test_listar_consumo(self, api):
+        """GET /api/consumo deve retornar lista."""
+        res = api.get("/api/consumo")
+        assert res.status == 200
+        body = res.json()
+        assert body["success"]
+        assert isinstance(body["data"], list)
+
+    def test_registrar_consumo(self, api):
+        """POST /api/consumo deve registrar consumo."""
+        # Adicionar estoque primeiro
+        api.post("/api/entradas", {"quantidade": 40})
+
+        res = api.post("/api/consumo", {"quantidade": 3, "observacao": "API test consumo"})
+        assert res.status == 200
+        body = res.json()
+        assert body["success"]
+        assert body["id"] > 0
+        assert "consumo" in body["message"].lower()
+
+    def test_registrar_consumo_sem_observacao(self, api):
+        """POST /api/consumo deve funcionar sem observação."""
+        api.post("/api/entradas", {"quantidade": 30})
+
+        res = api.post("/api/consumo", {"quantidade": 2})
+        assert res.status == 200
+        body = res.json()
+        assert body["success"]
+
+    def test_deletar_consumo(self, api):
+        """DELETE /api/consumo/<id> deve remover registro e devolver ao estoque."""
+        api.post("/api/entradas", {"quantidade": 25})
+        
+        # Registrar consumo
+        res = api.post("/api/consumo", {"quantidade": 4, "observacao": "delete test"})
+        entry_id = res.json()["id"]
+
+        # Deletar
+        res = api.delete(f"/api/consumo/{entry_id}")
+        assert res.status == 200
+        assert res.json()["success"]
+        assert "devolvido" in res.json()["message"].lower()
+
+    def test_consumo_lista_por_mes(self, api):
+        """GET /api/consumo?mes=... deve filtrar por mês."""
+        api.post("/api/entradas", {"quantidade": 50})
+        api.post("/api/consumo", {"quantidade": 5, "observacao": "teste filtro mes"})
+        
+        res = api.get("/api/consumo?mes=2026-02")
+        assert res.status == 200
+        body = res.json()
+        assert body["success"]
+        assert isinstance(body["data"], list)
+
+    def test_consumo_estoque_insuficiente(self, api):
+        """POST /api/consumo deve falhar sem estoque suficiente."""
+        # Tentar consumir quantidade absurdamente alta para garantir falha
+        res = api.post("/api/consumo", {"quantidade": 999999})
+        assert res.status == 400
+        body = res.json()
+        assert not body["success"]
+        assert "insuficiente" in body["error"].lower()
+
+    def test_consumo_quantidade_invalida(self, api):
+        """POST /api/consumo deve validar quantidade."""
+        res = api.post("/api/consumo", {"quantidade": 0})
+        assert res.status == 400
+        body = res.json()
+        assert not body["success"]
+
+
+# ═══════════════════════════════════════════
+# CONFIGURAÇÕES
+# ═══════════════════════════════════════════
+
+class TestConfiguracoesAPI:
+    """Testes da API de configurações administrativas."""
+
+    def test_get_configuracoes(self, api):
+        """GET /api/admin/configuracoes deve retornar configurações."""
+        res = api.get("/api/admin/configuracoes")
+        assert res.status == 200
+        body = res.json()
+        assert body["success"]
+        assert "consumo_habilitado" in body["data"]
+
+    def test_atualizar_consumo_habilitado(self, api):
+        """PUT /api/admin/configuracoes deve atualizar consumo_habilitado."""
+        # Habilitar
+        res = api.put("/api/admin/configuracoes", {"consumo_habilitado": True})
+        assert res.status == 200
+        body = res.json()
+        assert body["success"]
+
+        # Verificar se foi atualizado
+        res = api.get("/api/admin/configuracoes")
+        config = res.json()["data"]
+        assert config["consumo_habilitado"] == "1"
+
+    def test_desabilitar_consumo(self, api):
+        """PUT /api/admin/configuracoes deve desabilitar consumo."""
+        # Desabilitar
+        res = api.put("/api/admin/configuracoes", {"consumo_habilitado": False})
+        assert res.status == 200
+        body = res.json()
+        assert body["success"]
+
+        # Verificar
+        res = api.get("/api/admin/configuracoes")
+        config = res.json()["data"]
+        assert config["consumo_habilitado"] == "0"
+
+    def test_get_consumo_habilitado_publico(self, api):
+        """GET /api/configuracoes/consumo-habilitado deve ser acessível."""
+        res = api.get("/api/configuracoes/consumo-habilitado")
+        assert res.status == 200
+        body = res.json()
+        assert body["success"]
+        assert "habilitado" in body["data"]
+        assert isinstance(body["data"]["habilitado"], bool)
+
+    def test_configuracoes_persistem(self, api):
+        """Configurações devem persistir."""
+        # Habilitar
+        api.put("/api/admin/configuracoes", {"consumo_habilitado": True})
+        
+        # Buscar novamente
+        res = api.get("/api/admin/configuracoes")
+        config1 = res.json()["data"]
+        
+        # Buscar mais uma vez
+        res = api.get("/api/admin/configuracoes")
+        config2 = res.json()["data"]
+        
+        assert config1["consumo_habilitado"] == config2["consumo_habilitado"]
+
+
+# ═══════════════════════════════════════════
 # RELATÓRIOS
 # ═══════════════════════════════════════════
 

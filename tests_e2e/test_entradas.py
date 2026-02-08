@@ -44,7 +44,7 @@ class TestEntradaForm:
 
         # Verificar lista de entradas atualizada
         page.wait_for_timeout(1000)
-        entradas_list = page.locator("#entradas-list")
+        entradas_list = page.locator("#entradas-hoje-list")
         assert "50" in entradas_list.inner_text()
 
     def test_entrada_atualiza_estoque(self, authenticated_page):
@@ -89,7 +89,7 @@ class TestEntradaForm:
         page.click('#form-entrada button[type="submit"]')
         page.wait_for_timeout(1500)
 
-        entradas_list = page.locator("#entradas-list")
+        entradas_list = page.locator("#entradas-hoje-list")
         text = entradas_list.inner_text()
         assert "10" in text
 
@@ -108,8 +108,8 @@ class TestEntradaDelete:
         page.click('#form-entrada button[type="submit"]')
         page.wait_for_timeout(1500)
 
-        # Clicar no botão de deletar da primeira entrada
-        delete_btn = page.locator("#entradas-list .btn-delete, #entradas-list button.btn-danger").first
+        # Clicar no botão de desfazer da primeira entrada
+        delete_btn = page.locator("#entradas-hoje-list .btn-undo, #entradas-hoje-list button").first
         if delete_btn.is_visible():
             delete_btn.click()
             # Se houver modal de confirmação, confirmar
