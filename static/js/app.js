@@ -103,6 +103,7 @@ async function checkAuth() {
             // Mostrar aba admin se for administrador
             const navAdmin = document.getElementById('nav-admin');
             if (navAdmin) navAdmin.style.display = data.data.is_admin ? '' : 'none';
+            await loadConfigGerais();
             // Verificar se consumo está habilitado
             await checkConsumoHabilitado();
             return true;
@@ -259,22 +260,41 @@ function getCurrentMonth() {
 }
 
 function formatCurrency(value) {
-    return new Intl.NumberFormat('pt-BR', {
+    const moeda = window._appConfig?.moeda || 'BRL';
+    const locales = {
+        BRL: 'pt-BR', USD: 'en-US', EUR: 'de-DE', GBP: 'en-GB',
+        JPY: 'ja-JP', ARS: 'es-AR', CLP: 'es-CL', COP: 'es-CO',
+        MXN: 'es-MX', PEN: 'es-PE', UYU: 'es-UY'
+    };
+    return new Intl.NumberFormat(locales[moeda] || 'pt-BR', {
         style: 'currency',
-        currency: 'BRL'
+        currency: moeda
     }).format(value || 0);
 }
 
 function formatDate(dateStr) {
     if (!dateStr) return '—';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    const tz = window._appConfig?.timezone || 'America/Sao_Paulo';
+    const fmt = window._appConfig?.formato_data || 'DD/MM/AAAA';
+    const opts = { hour: '2-digit', minute: '2-digit', timeZone: tz };
+    if (fmt === 'MM/DD/AAAA') {
+        opts.month = '2-digit'; opts.day = '2-digit'; opts.year = 'numeric';
+        return date.toLocaleDateString('en-US', opts);
+    } else if (fmt === 'AAAA-MM-DD') {
+        opts.year = 'numeric'; opts.month = '2-digit'; opts.day = '2-digit';
+        // Build ISO-like string manually
+        const parts = new Intl.DateTimeFormat('en-CA', opts).formatToParts(date);
+        const y = parts.find(p => p.type === 'year')?.value;
+        const m = parts.find(p => p.type === 'month')?.value;
+        const d = parts.find(p => p.type === 'day')?.value;
+        const h = parts.find(p => p.type === 'hour')?.value;
+        const min = parts.find(p => p.type === 'minute')?.value;
+        return `${y}-${m}-${d} ${h}:${min}`;
+    } else {
+        opts.day = '2-digit'; opts.month = '2-digit'; opts.year = 'numeric';
+        return date.toLocaleDateString('pt-BR', opts);
+    }
 }
 
 function formatMonthLabel(monthStr) {
@@ -822,11 +842,13 @@ function renderVendasAnteriores(vendasPorDia, hoje) {
 
 function formatDateLong(dateStr) {
     const date = new Date(dateStr + 'T00:00:00');
+    const tz = window._appConfig?.timezone || 'America/Sao_Paulo';
     return date.toLocaleDateString('pt-BR', { 
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
-        day: 'numeric' 
+        day: 'numeric',
+        timeZone: tz
     });
 }
 
@@ -1725,8 +1747,35 @@ async function loadAdminConfiguracoes() {
         // Atualizar checkboxes
         document.getElementById('config-consumo-habilitado').checked = 
             config.consumo_habilitado === '1';
+
+        // Atualizar campos de configurações gerais
+        const tz = document.getElementById('config-timezone');
+        const moeda = document.getElementById('config-moeda');
+        const fmtData = document.getElementById('config-formato-data');
+        const nomeFaz = document.getElementById('config-nome-fazenda');
+
+        if (tz) tz.value = config.timezone || 'America/Sao_Paulo';
+        if (moeda) moeda.value = config.moeda || 'BRL';
+        if (fmtData) fmtData.value = config.formato_data || 'DD/MM/AAAA';
+        if (nomeFaz) nomeFaz.value = config.nome_fazenda || 'EggVault';
     } catch (e) {
         console.error('Erro ao carregar configurações:', e);
+    }
+}
+
+async function loadConfigGerais() {
+    try {
+        const res = await api('/api/configuracoes/gerais');
+        window._appConfig = res.data;
+
+        // Atualizar título da fazenda na sidebar / header
+        const nome = res.data.nome_fazenda || 'EggVault';
+        const titleEl = document.querySelector('.sidebar-header h2, .sidebar-header span');
+        if (titleEl) titleEl.textContent = nome;
+        document.title = `🥚 ${nome} — Gerenciamento de Ovos`;
+    } catch (e) {
+        console.error('Erro ao carregar config gerais:', e);
+        window._appConfig = {};
     }
 }
 
@@ -2123,6 +2172,46 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Atualizar visibilidade da aba de consumo
             await checkConsumoHabilitado();
+
+        } catch (err) {
+            // Toast já exibido
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    // ── Formulário: Configurações Gerais (Admin) ──
+    document.getElementById('form-config-gerais').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="spinner"></span> Salvando...';
+            btn.disabled = true;
+
+            const timezone = document.getElementById('config-timezone').value;
+            const moeda = document.getElementById('config-moeda').value;
+            const formato_data = document.getElementById('config-formato-data').value;
+            const nome_fazenda = document.getElementById('config-nome-fazenda').value.trim();
+
+            if (!nome_fazenda) {
+                showToast('Nome da fazenda é obrigatório', 'error');
+                return;
+            }
+
+            const res = await api('/api/admin/configuracoes', {
+                method: 'PUT',
+                body: JSON.stringify({ timezone, moeda, formato_data, nome_fazenda })
+            });
+
+            showToast(res.message, 'success');
+
+            // Recarregar configurações globais para aplicar imediatamente
+            await loadConfigGerais();
+            // Invalidar caches que mostram valores formatados
+            invalidateCache();
 
         } catch (err) {
             // Toast já exibido

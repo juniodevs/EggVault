@@ -410,6 +410,19 @@ class TestConfiguracoesAPI:
         body = res.json()
         assert body["success"]
         assert "consumo_habilitado" in body["data"]
+        assert "timezone" in body["data"]
+        assert "nome_fazenda" in body["data"]
+        assert "moeda" in body["data"]
+        assert "formato_data" in body["data"]
+
+    def test_get_configuracoes_valores_padrao(self, api):
+        """Configurações gerais devem ter valores padrão corretos."""
+        res = api.get("/api/admin/configuracoes")
+        config = res.json()["data"]
+        assert config["timezone"] == "America/Sao_Paulo"
+        assert config["nome_fazenda"] == "EggVault"
+        assert config["moeda"] == "BRL"
+        assert config["formato_data"] == "DD/MM/AAAA"
 
     def test_atualizar_consumo_habilitado(self, api):
         """PUT /api/admin/configuracoes deve atualizar consumo_habilitado."""
@@ -460,6 +473,114 @@ class TestConfiguracoesAPI:
         config2 = res.json()["data"]
         
         assert config1["consumo_habilitado"] == config2["consumo_habilitado"]
+
+    # ── Configurações Gerais ──
+
+    def test_atualizar_timezone(self, api):
+        """PUT /api/admin/configuracoes deve atualizar timezone."""
+        res = api.put("/api/admin/configuracoes", {"timezone": "America/Manaus"})
+        assert res.status == 200
+        assert res.json()["success"]
+
+        res = api.get("/api/admin/configuracoes")
+        assert res.json()["data"]["timezone"] == "America/Manaus"
+
+    def test_atualizar_timezone_invalido(self, api):
+        """PUT com timezone inválido deve retornar erro 400."""
+        res = api.put("/api/admin/configuracoes", {"timezone": "Marte/Olimpo"})
+        assert res.status == 400
+        assert not res.json()["success"]
+        assert "inválido" in res.json()["error"].lower() or "invalido" in res.json()["error"].lower()
+
+    def test_atualizar_nome_fazenda(self, api):
+        """PUT /api/admin/configuracoes deve atualizar nome da fazenda."""
+        res = api.put("/api/admin/configuracoes", {"nome_fazenda": "Fazenda Boa Vista"})
+        assert res.status == 200
+        assert res.json()["success"]
+
+        res = api.get("/api/admin/configuracoes")
+        assert res.json()["data"]["nome_fazenda"] == "Fazenda Boa Vista"
+
+    def test_atualizar_nome_fazenda_vazio(self, api):
+        """Nome da fazenda vazio deve retornar erro 400."""
+        res = api.put("/api/admin/configuracoes", {"nome_fazenda": ""})
+        assert res.status == 400
+        assert not res.json()["success"]
+
+    def test_atualizar_nome_fazenda_muito_longo(self, api):
+        """Nome da fazenda > 50 caracteres deve retornar erro 400."""
+        res = api.put("/api/admin/configuracoes", {"nome_fazenda": "A" * 51})
+        assert res.status == 400
+        assert not res.json()["success"]
+
+    def test_atualizar_moeda(self, api):
+        """PUT /api/admin/configuracoes deve atualizar moeda."""
+        res = api.put("/api/admin/configuracoes", {"moeda": "USD"})
+        assert res.status == 200
+        assert res.json()["success"]
+
+        res = api.get("/api/admin/configuracoes")
+        assert res.json()["data"]["moeda"] == "USD"
+
+    def test_atualizar_moeda_invalida(self, api):
+        """PUT com moeda inválida deve retornar erro 400."""
+        res = api.put("/api/admin/configuracoes", {"moeda": "XYZ"})
+        assert res.status == 400
+        assert not res.json()["success"]
+
+    def test_atualizar_formato_data(self, api):
+        """PUT /api/admin/configuracoes deve atualizar formato de data."""
+        res = api.put("/api/admin/configuracoes", {"formato_data": "AAAA-MM-DD"})
+        assert res.status == 200
+        assert res.json()["success"]
+
+        res = api.get("/api/admin/configuracoes")
+        assert res.json()["data"]["formato_data"] == "AAAA-MM-DD"
+
+    def test_atualizar_formato_data_invalido(self, api):
+        """PUT com formato de data inválido deve retornar erro 400."""
+        res = api.put("/api/admin/configuracoes", {"formato_data": "YYYY/MM/DD"})
+        assert res.status == 400
+        assert not res.json()["success"]
+
+    def test_atualizar_multiplas_configs_gerais(self, api):
+        """PUT deve atualizar múltiplas configurações gerais ao mesmo tempo."""
+        payload = {
+            "timezone": "Europe/Lisbon",
+            "nome_fazenda": "Minha Granja",
+            "moeda": "EUR",
+            "formato_data": "MM/DD/AAAA"
+        }
+        res = api.put("/api/admin/configuracoes", payload)
+        assert res.status == 200
+        assert res.json()["success"]
+
+        res = api.get("/api/admin/configuracoes")
+        config = res.json()["data"]
+        assert config["timezone"] == "Europe/Lisbon"
+        assert config["nome_fazenda"] == "Minha Granja"
+        assert config["moeda"] == "EUR"
+        assert config["formato_data"] == "MM/DD/AAAA"
+
+    def test_get_configuracoes_gerais_publico(self, api):
+        """GET /api/configuracoes/gerais deve retornar configs públicas."""
+        res = api.get("/api/configuracoes/gerais")
+        assert res.status == 200
+        body = res.json()
+        assert body["success"]
+        assert "timezone" in body["data"]
+        assert "nome_fazenda" in body["data"]
+        assert "moeda" in body["data"]
+        assert "formato_data" in body["data"]
+        # Não deve conter configurações sensíveis
+        assert "consumo_habilitado" not in body["data"]
+
+    def test_configs_gerais_refletem_atualizacao(self, api):
+        """Configurações gerais públicas devem refletir as atualizações do admin."""
+        api.put("/api/admin/configuracoes", {"nome_fazenda": "Granja Feliz"})
+
+        res = api.get("/api/configuracoes/gerais")
+        assert res.json()["data"]["nome_fazenda"] == "Granja Feliz"
 
 
 # ═══════════════════════════════════════════

@@ -147,6 +147,120 @@ class TestAdminConfiguracoes:
         assert page.locator("#form-configuracoes").is_visible()
         assert page.locator("#config-consumo-habilitado").is_visible()
 
+    def test_config_gerais_form_visible(self, authenticated_page):
+        """Formulário de configurações gerais deve estar visível na aba admin."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        assert page.locator("#form-config-gerais").is_visible()
+        assert page.locator("#config-timezone").is_visible()
+        assert page.locator("#config-moeda").is_visible()
+        assert page.locator("#config-formato-data").is_visible()
+        assert page.locator("#config-nome-fazenda").is_visible()
+
+    def test_config_gerais_valores_padrao(self, authenticated_page):
+        """Configurações gerais devem exibir valores padrão corretos."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(1000)
+
+        assert page.locator("#config-timezone").input_value() == "America/Sao_Paulo"
+        assert page.locator("#config-moeda").input_value() == "BRL"
+        assert page.locator("#config-formato-data").input_value() == "DD/MM/AAAA"
+        assert page.locator("#config-nome-fazenda").input_value() == "EggVault"
+
+    def test_alterar_timezone(self, authenticated_page):
+        """Deve alterar o timezone através do formulário."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        page.select_option("#config-timezone", "America/Manaus")
+        page.click('#form-config-gerais button[type="submit"]')
+
+        toast = page.locator("#toast-container .toast, #toast-container div")
+        toast.first.wait_for(state="visible", timeout=10000)
+        page.wait_for_timeout(1000)
+
+        # Verificar persistência
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(1000)
+        assert page.locator("#config-timezone").input_value() == "America/Manaus"
+
+    def test_alterar_moeda(self, authenticated_page):
+        """Deve alterar a moeda através do formulário."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        page.select_option("#config-moeda", "USD")
+        page.click('#form-config-gerais button[type="submit"]')
+
+        toast = page.locator("#toast-container .toast, #toast-container div")
+        toast.first.wait_for(state="visible", timeout=10000)
+        page.wait_for_timeout(1000)
+
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(1000)
+        assert page.locator("#config-moeda").input_value() == "USD"
+
+    def test_alterar_formato_data(self, authenticated_page):
+        """Deve alterar o formato de data."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        page.select_option("#config-formato-data", "AAAA-MM-DD")
+        page.click('#form-config-gerais button[type="submit"]')
+
+        toast = page.locator("#toast-container .toast, #toast-container div")
+        toast.first.wait_for(state="visible", timeout=10000)
+        page.wait_for_timeout(1000)
+
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(1000)
+        assert page.locator("#config-formato-data").input_value() == "AAAA-MM-DD"
+
+    def test_alterar_nome_fazenda(self, authenticated_page):
+        """Deve alterar o nome da fazenda e refletir no título."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        page.fill("#config-nome-fazenda", "Granja Feliz")
+        page.click('#form-config-gerais button[type="submit"]')
+
+        toast = page.locator("#toast-container .toast, #toast-container div")
+        toast.first.wait_for(state="visible", timeout=10000)
+        page.wait_for_timeout(1000)
+
+        # Nome deve aparecer no título da página
+        assert "Granja Feliz" in page.title()
+
+    def test_config_gerais_persistem_reload(self, authenticated_page):
+        """Configurações gerais devem persistir após reload."""
+        page = authenticated_page
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(500)
+
+        page.select_option("#config-timezone", "Europe/Lisbon")
+        page.select_option("#config-moeda", "EUR")
+        page.fill("#config-nome-fazenda", "Fazenda Teste")
+        page.click('#form-config-gerais button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        # Recarregar
+        page.reload()
+        page.wait_for_timeout(2000)
+
+        page.click('li[data-tab="admin"]')
+        page.wait_for_timeout(1000)
+
+        assert page.locator("#config-timezone").input_value() == "Europe/Lisbon"
+        assert page.locator("#config-moeda").input_value() == "EUR"
+        assert page.locator("#config-nome-fazenda").input_value() == "Fazenda Teste"
+
     def test_habilitar_consumo(self, authenticated_page):
         """Deve habilitar a aba de consumo através das configurações."""
         page = authenticated_page

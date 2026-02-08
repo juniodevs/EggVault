@@ -691,17 +691,55 @@ def admin_update_configuracoes():
 
         conn = get_connection()
         cursor = conn.cursor()
-        
-        # Atualizar consumo_habilitado se fornecido
-        if 'consumo_habilitado' in data:
-            valor = '1' if data['consumo_habilitado'] else '0'
-            cursor.execute(
-                """INSERT INTO configuracoes (chave, valor, atualizado_em) 
-                   VALUES (?, ?, CURRENT_TIMESTAMP)
-                   ON CONFLICT(chave) DO UPDATE SET valor = ?, atualizado_em = CURRENT_TIMESTAMP""",
-                ('consumo_habilitado', valor, valor)
-            )
-        
+
+        _bool_keys = ('consumo_habilitado',)
+        _text_keys = ('timezone', 'nome_fazenda', 'moeda', 'formato_data')
+        _valid_timezones = (
+            'America/Sao_Paulo', 'America/Manaus', 'America/Belem',
+            'America/Fortaleza', 'America/Recife', 'America/Bahia',
+            'America/Cuiaba', 'America/Campo_Grande', 'America/Porto_Velho',
+            'America/Boa_Vista', 'America/Rio_Branco', 'America/Noronha',
+            'America/New_York', 'America/Chicago', 'America/Denver',
+            'America/Los_Angeles', 'Europe/London', 'Europe/Lisbon',
+            'Europe/Madrid', 'Europe/Paris', 'Asia/Tokyo', 'UTC',
+        )
+        _valid_currencies = ('BRL', 'USD', 'EUR', 'GBP', 'JPY', 'ARS', 'CLP', 'COP', 'MXN', 'PEN', 'UYU')
+        _valid_date_formats = ('DD/MM/AAAA', 'MM/DD/AAAA', 'AAAA-MM-DD')
+
+        for key in _bool_keys:
+            if key in data:
+                valor = '1' if data[key] else '0'
+                cursor.execute(
+                    """INSERT INTO configuracoes (chave, valor, atualizado_em)
+                       VALUES (?, ?, CURRENT_TIMESTAMP)
+                       ON CONFLICT(chave) DO UPDATE SET valor = ?, atualizado_em = CURRENT_TIMESTAMP""",
+                    (key, valor, valor)
+                )
+
+        for key in _text_keys:
+            if key in data:
+                valor = str(data[key]).strip()
+                # Validações específicas
+                if key == 'timezone' and valor not in _valid_timezones:
+                    conn.close()
+                    return jsonify({'success': False, 'error': f'Timezone inválido: {valor}'}), 400
+                if key == 'moeda' and valor not in _valid_currencies:
+                    conn.close()
+                    return jsonify({'success': False, 'error': f'Moeda inválida: {valor}'}), 400
+                if key == 'formato_data' and valor not in _valid_date_formats:
+                    conn.close()
+                    return jsonify({'success': False, 'error': f'Formato de data inválido: {valor}'}), 400
+                if key == 'nome_fazenda' and (len(valor) < 1 or len(valor) > 50):
+                    conn.close()
+                    return jsonify({'success': False, 'error': 'Nome da fazenda deve ter entre 1 e 50 caracteres'}), 400
+
+                cursor.execute(
+                    """INSERT INTO configuracoes (chave, valor, atualizado_em)
+                       VALUES (?, ?, CURRENT_TIMESTAMP)
+                       ON CONFLICT(chave) DO UPDATE SET valor = ?, atualizado_em = CURRENT_TIMESTAMP""",
+                    (key, valor, valor)
+                )
+
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': 'Configurações atualizadas'})
@@ -722,6 +760,26 @@ def get_consumo_habilitado():
         
         habilitado = row['valor'] == '1' if row else False
         return jsonify({'success': True, 'data': {'habilitado': habilitado}})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/configuracoes/gerais', methods=['GET'])
+@login_required
+def get_configuracoes_gerais():
+    """Retorna configurações gerais públicas (todos os usuários logados)."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT chave, valor FROM configuracoes WHERE chave IN (?, ?, ?, ?)",
+            ('timezone', 'nome_fazenda', 'moeda', 'formato_data')
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        config = {row['chave']: row['valor'] for row in rows}
+        return jsonify({'success': True, 'data': config})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

@@ -106,7 +106,11 @@ class PgCursorWrapper:
         converted = {}
         for key, value in row.items():
             if isinstance(value, (datetime, date)):
-                converted[key] = value.isoformat()
+                # Adicionar 'Z' se for datetime naive (assumir UTC)
+                iso = value.isoformat()
+                if isinstance(value, datetime) and value.tzinfo is None and 'T' in iso:
+                    iso = iso + 'Z'
+                converted[key] = iso
             else:
                 converted[key] = value
         return converted
@@ -156,6 +160,7 @@ def get_connection():
 # ═══════════════════════════════════════════
 
 _SQLITE_SCHEMA = '''
+    -- SQLite: DATETIME armazena como texto, sempre tratado como UTC quando convertido
     CREATE TABLE IF NOT EXISTS estoque (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         quantidade_total INTEGER NOT NULL DEFAULT 0,
@@ -263,13 +268,13 @@ _POSTGRES_SCHEMA = '''
     CREATE TABLE IF NOT EXISTS estoque (
         id SERIAL PRIMARY KEY,
         quantidade_total INTEGER NOT NULL DEFAULT 0,
-        ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ultima_atualizacao TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS entradas (
         id SERIAL PRIMARY KEY,
         quantidade INTEGER NOT NULL CHECK(quantidade > 0),
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        data TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         observacao TEXT DEFAULT '',
         mes_referencia TEXT NOT NULL,
         usuario_id INTEGER,
@@ -281,7 +286,7 @@ _POSTGRES_SCHEMA = '''
         quantidade INTEGER NOT NULL CHECK(quantidade > 0),
         preco_unitario DOUBLE PRECISION NOT NULL CHECK(preco_unitario >= 0),
         valor_total DOUBLE PRECISION NOT NULL CHECK(valor_total >= 0),
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        data TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         mes_referencia TEXT NOT NULL,
         usuario_id INTEGER,
         usuario_nome TEXT DEFAULT ''
@@ -290,14 +295,14 @@ _POSTGRES_SCHEMA = '''
     CREATE TABLE IF NOT EXISTS precos (
         id SERIAL PRIMARY KEY,
         preco_unitario DOUBLE PRECISION NOT NULL CHECK(preco_unitario >= 0),
-        data_inicio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        data_inicio TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         ativo INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS quebrados (
         id SERIAL PRIMARY KEY,
         quantidade INTEGER NOT NULL CHECK(quantidade > 0),
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        data TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         motivo TEXT DEFAULT '',
         mes_referencia TEXT NOT NULL,
         usuario_id INTEGER,
@@ -307,7 +312,7 @@ _POSTGRES_SCHEMA = '''
     CREATE TABLE IF NOT EXISTS consumo (
         id SERIAL PRIMARY KEY,
         quantidade INTEGER NOT NULL CHECK(quantidade > 0),
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        data TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         observacao TEXT DEFAULT '',
         mes_referencia TEXT NOT NULL,
         usuario_id INTEGER,
@@ -318,7 +323,7 @@ _POSTGRES_SCHEMA = '''
         id SERIAL PRIMARY KEY,
         valor DOUBLE PRECISION NOT NULL CHECK(valor > 0),
         descricao TEXT NOT NULL DEFAULT '',
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        data TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         mes_referencia TEXT NOT NULL,
         usuario_id INTEGER,
         usuario_nome TEXT DEFAULT ''
@@ -342,16 +347,16 @@ _POSTGRES_SCHEMA = '''
         salt TEXT NOT NULL,
         nome TEXT NOT NULL DEFAULT '',
         is_admin INTEGER NOT NULL DEFAULT 0,
-        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        ultimo_login TIMESTAMP
+        criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        ultimo_login TIMESTAMPTZ
     );
 
     CREATE TABLE IF NOT EXISTS sessoes (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL,
         token TEXT NOT NULL UNIQUE,
-        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        expira_em TIMESTAMP NOT NULL,
+        criado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        expira_em TIMESTAMPTZ NOT NULL,
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     );
 
@@ -359,7 +364,7 @@ _POSTGRES_SCHEMA = '''
         id SERIAL PRIMARY KEY,
         chave TEXT NOT NULL UNIQUE,
         valor TEXT NOT NULL,
-        atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        atualizado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
 '''
 
@@ -453,13 +458,20 @@ def init_db():
         # Garantir que o admin existente tenha is_admin=1
         cursor.execute("UPDATE usuarios SET is_admin = 1 WHERE username = 'admin' AND is_admin = 0")
 
-    # ── Configurações padrão ─────────────
-    cursor.execute("SELECT COUNT(*) as count FROM configuracoes WHERE chave = ?", ('consumo_habilitado',))
-    if cursor.fetchone()['count'] == 0:
-        cursor.execute(
-            "INSERT INTO configuracoes (chave, valor) VALUES (?, ?)",
-            ('consumo_habilitado', '0')  # Desabilitado por padrão
-        )
+    _default_configs = [
+        ('consumo_habilitado', '0'),
+        ('timezone', 'America/Sao_Paulo'),
+        ('nome_fazenda', 'EggVault'),
+        ('moeda', 'BRL'),
+        ('formato_data', 'DD/MM/AAAA'),
+    ]
+    for chave, valor_padrao in _default_configs:
+        cursor.execute("SELECT COUNT(*) as count FROM configuracoes WHERE chave = ?", (chave,))
+        if cursor.fetchone()['count'] == 0:
+            cursor.execute(
+                "INSERT INTO configuracoes (chave, valor) VALUES (?, ?)",
+                (chave, valor_padrao)
+            )
 
     conn.commit()
     conn.close()

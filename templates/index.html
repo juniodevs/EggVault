@@ -784,12 +784,91 @@
         <section id="tab-admin" class="tab-content">
             <div class="page-header">
                 <h1><i class="fas fa-users-cog"></i> Painel de Administração</h1>
-                <p class="subtitle">Gerencie os usuários da fazenda</p>
+                <p class="subtitle">Gerencie usuários e configurações da fazenda</p>
             </div>
 
             <div class="content-grid">
+
+                <!-- ── Configurações Gerais ── -->
+                <div class="card form-card admin-config-card">
+                    <h3><i class="fas fa-globe"></i> Configurações Gerais</h3>
+                    <form id="form-config-gerais">
+                        <div class="form-group">
+                            <label for="config-nome-fazenda"><i class="fas fa-home"></i> Nome da Fazenda</label>
+                            <input type="text" id="config-nome-fazenda" maxlength="50" placeholder="Ex: Fazenda Boa Vista">
+                            <small class="form-hint">Exibido no cabeçalho do sistema</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="config-timezone"><i class="fas fa-clock"></i> Fuso Horário</label>
+                            <select id="config-timezone">
+                                <optgroup label="Brasil">
+                                    <option value="America/Sao_Paulo">São Paulo (BRT, UTC−3)</option>
+                                    <option value="America/Fortaleza">Fortaleza (BRT, UTC−3)</option>
+                                    <option value="America/Recife">Recife (BRT, UTC−3)</option>
+                                    <option value="America/Bahia">Bahia (BRT, UTC−3)</option>
+                                    <option value="America/Belem">Belém (BRT, UTC−3)</option>
+                                    <option value="America/Manaus">Manaus (AMT, UTC−4)</option>
+                                    <option value="America/Cuiaba">Cuiabá (AMT, UTC−4)</option>
+                                    <option value="America/Campo_Grande">Campo Grande (AMT, UTC−4)</option>
+                                    <option value="America/Porto_Velho">Porto Velho (AMT, UTC−4)</option>
+                                    <option value="America/Boa_Vista">Boa Vista (AMT, UTC−4)</option>
+                                    <option value="America/Rio_Branco">Rio Branco (ACT, UTC−5)</option>
+                                    <option value="America/Noronha">Fernando de Noronha (FNT, UTC−2)</option>
+                                </optgroup>
+                                <optgroup label="Américas">
+                                    <option value="America/New_York">Nova York (EST, UTC−5)</option>
+                                    <option value="America/Chicago">Chicago (CST, UTC−6)</option>
+                                    <option value="America/Denver">Denver (MST, UTC−7)</option>
+                                    <option value="America/Los_Angeles">Los Angeles (PST, UTC−8)</option>
+                                </optgroup>
+                                <optgroup label="Europa">
+                                    <option value="Europe/London">Londres (GMT, UTC+0)</option>
+                                    <option value="Europe/Lisbon">Lisboa (WET, UTC+0)</option>
+                                    <option value="Europe/Madrid">Madrid (CET, UTC+1)</option>
+                                    <option value="Europe/Paris">Paris (CET, UTC+1)</option>
+                                </optgroup>
+                                <optgroup label="Outros">
+                                    <option value="Asia/Tokyo">Tóquio (JST, UTC+9)</option>
+                                    <option value="UTC">UTC</option>
+                                </optgroup>
+                            </select>
+                            <small class="form-hint">Afeta horários exibidos nos registros</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="config-moeda"><i class="fas fa-coins"></i> Moeda</label>
+                            <select id="config-moeda">
+                                <option value="BRL">R$ — Real Brasileiro (BRL)</option>
+                                <option value="USD">$ — Dólar Americano (USD)</option>
+                                <option value="EUR">€ — Euro (EUR)</option>
+                                <option value="GBP">£ — Libra Esterlina (GBP)</option>
+                                <option value="ARS">$ — Peso Argentino (ARS)</option>
+                                <option value="CLP">$ — Peso Chileno (CLP)</option>
+                                <option value="COP">$ — Peso Colombiano (COP)</option>
+                                <option value="MXN">$ — Peso Mexicano (MXN)</option>
+                                <option value="PEN">S/ — Sol Peruano (PEN)</option>
+                                <option value="UYU">$ — Peso Uruguaio (UYU)</option>
+                                <option value="JPY">¥ — Iene Japonês (JPY)</option>
+                            </select>
+                            <small class="form-hint">Moeda utilizada nos valores financeiros</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="config-formato-data"><i class="fas fa-calendar-alt"></i> Formato de Data</label>
+                            <select id="config-formato-data">
+                                <option value="DD/MM/AAAA">DD/MM/AAAA (08/02/2026)</option>
+                                <option value="MM/DD/AAAA">MM/DD/AAAA (02/08/2026)</option>
+                                <option value="AAAA-MM-DD">AAAA-MM-DD (2026-02-08)</option>
+                            </select>
+                            <small class="form-hint">Formato de exibição das datas no sistema</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salvar Configurações Gerais
+                        </button>
+                    </form>
+                </div>
+
+                <!-- ── Configurações de Módulos ── -->
                 <div class="card form-card">
-                    <h3><i class="fas fa-cog"></i> Configurações</h3>
+                    <h3><i class="fas fa-cog"></i> Configurações de Módulos</h3>
                     <form id="form-configuracoes">
                         <div class="form-group">
                             <label class="checkbox-label">
@@ -799,7 +878,7 @@
                             <small class="form-hint">Quando ativada, permite registrar consumo pessoal de ovos que serão subtraídos do estoque</small>
                         </div>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Salvar Configurações
+                            <i class="fas fa-save"></i> Salvar Módulos
                         </button>
                     </form>
                 </div>

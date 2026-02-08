@@ -1906,3 +1906,29 @@ tbody.loading {
     opacity: 0.6;
     pointer-events: none;
 }
+
+.admin-config-card {
+    grid-column: 1 / -1;
+}
+
+.admin-config-card .form-group label i {
+    color: var(--primary);
+    width: 18px;
+    text-align: center;
+    margin-right: 4px;
+}
+
+.admin-config-card select {
+    appearance: auto;
+}
+
+@media (min-width: 768px) {
+    .admin-config-card form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 24px;
+    }
+    .admin-config-card form button[type="submit"] {
+        grid-column: 1 / -1;
+    }
+}
