@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "env": {
-    "TZ": "America/Sao_Paulo"
-  },
   "builds": [
     {
       "src": "app.py",
