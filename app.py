@@ -17,8 +17,17 @@ from services.despesa_service import DespesaService
 from services.auth_service import AuthService
 from services.export_service import ExportService
 from datetime import datetime
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, 
+    static_url_path='/static',
+    static_folder='static',
+    template_folder='templates'
+)
+
+# Desabilitar cache de arquivos estáticos em produção (para debug)
+if os.environ.get('VERCEL'):
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 
 # ═══════════════════════════════════════════
