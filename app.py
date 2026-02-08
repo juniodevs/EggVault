@@ -258,11 +258,15 @@ def add_saida():
 
         quantidade = int(data.get('quantidade', 0))
         preco_unitario = data.get('preco_unitario')
+        valor_total = data.get('valor_total')
+        
         if preco_unitario is not None:
             preco_unitario = float(preco_unitario)
+        if valor_total is not None:
+            valor_total = float(valor_total)
 
         sale_id = SaidaService.registrar(
-            quantidade, preco_unitario,
+            quantidade, preco_unitario, valor_total,
             usuario_id=request.usuario['id'],
             usuario_nome=request.usuario['nome'] or request.usuario['username']
         )

@@ -11,13 +11,14 @@ class SaidaService:
     """Lógica de negócios para registro de vendas/saídas de ovos."""
 
     @staticmethod
-    def registrar(quantidade, preco_unitario=None, usuario_id=None, usuario_nome=''):
+    def registrar(quantidade, preco_unitario=None, valor_total=None, usuario_id=None, usuario_nome=''):
         """
         Registra uma nova venda de ovos.
 
         Args:
             quantidade: Número de ovos vendidos (inteiro positivo).
             preco_unitario: Preço por ovo. Se None, usa o preço ativo.
+            valor_total: Valor total da venda. Se fornecido, tem prioridade sobre preco_unitario.
             usuario_id: ID do usuário que registrou.
             usuario_nome: Nome do usuário que registrou.
 
@@ -38,17 +39,25 @@ class SaidaService:
                 f"Estoque insuficiente. Disponível: {estoque['quantidade_total']} ovos"
             )
 
-        # Obter preço
-        if preco_unitario is None:
+        # Determinar valor_total e preco_unitario
+        if valor_total is not None:
+            # Se valor_total foi fornecido, usa ele e calcula o preço unitário
+            if valor_total < 0:
+                raise ValueError("Valor total não pode ser negativo")
+            preco_unitario = round(valor_total / quantidade, 4)  # Mais precisão para o preço unitário
+        elif preco_unitario is not None:
+            # Se apenas preco_unitario foi fornecido, calcula o total
+            if preco_unitario < 0:
+                raise ValueError("Preço unitário não pode ser negativo")
+            valor_total = round(quantidade * preco_unitario, 2)
+        else:
+            # Nenhum dos dois foi fornecido, usa o preço ativo
             preco = PrecoService.get_ativo()
             if preco is None:
                 raise ValueError("Nenhum preço ativo definido. Defina um preço antes de vender.")
             preco_unitario = preco['preco_unitario']
+            valor_total = round(quantidade * preco_unitario, 2)
 
-        if preco_unitario < 0:
-            raise ValueError("Preço unitário não pode ser negativo")
-
-        valor_total = round(quantidade * preco_unitario, 2)
         mes_ref = datetime.now().strftime('%Y-%m')
 
         sale_id = SaidaRepository.create(quantidade, preco_unitario, valor_total, mes_ref, usuario_id, usuario_nome)
