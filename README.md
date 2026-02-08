@@ -222,7 +222,58 @@ Egg/
 ## 🎨 Tecnologias
 
 - **Backend:** Python 3 + Flask
-- **Banco:** SQLite3
+- **Banco:** SQLite3 / PostgreSQL
 - **Frontend:** HTML5 + CSS3 + JavaScript (Vanilla)
 - **Gráficos:** Chart.js 4
 - **Ícones:** Font Awesome 6
+
+## 🗺️ Roadmap
+
+### 🔴 Prioridade Alta
+
+- [ ] **Sistema de notificações** — Alertas push quando estoque atingir nível crítico
+- [ ] **Metas mensais** — Definir metas de vendas/faturamento e acompanhar progresso com indicadores visuais
+- [ ] **App mobile (PWA)** — Instalar como app no celular com suporte offline usando Service Workers
+- [ ] **Comparativo entre períodos** — Comparar desempenho entre meses/anos diferentes lado a lado
+- [ ] **Filtro por usuário** — Filtrar entradas/vendas/despesas por usuário específico nos relatórios
+- [ ] **Tags/categorias** — Classificar despesas e entradas por categoria (ração, embalagem, etc.)
+
+### 🟡 Prioridade Média
+
+- [ ] **Multi-propriedade** — Gerenciar múltiplas propriedades/fazendas em uma conta
+- [ ] **Gestão de clientes** — Cadastro de clientes frequentes com histórico de compras
+- [ ] **Sistema de pedidos** — Receber e gerenciar pedidos futuros com calendário de entregas
+- [ ] **QR Code nas vendas** — Gerar comprovantes de venda com QR Code para validação
+- [ ] **Integração com WhatsApp** — Enviar resumos diários/semanais via WhatsApp Business API
+- [ ] **Relatórios personalizados** — Criar e salvar relatórios customizados com filtros específicos
+- [ ] **Notificações por email** — Alertas automáticos por email para eventos importantes
+
+### 🟢 Prioridade Baixa
+
+- [ ] **Tema escuro** — Alternar entre modo claro e escuro com preferência salva
+- [ ] **Suporte a idiomas** — Internacionalização (i18n) para inglês e espanhol
+- [ ] **Sistema de comentários** — Adicionar comentários/observações em registros antigos
+- [ ] **Auditoria completa** — Log detalhado de todas as ações dos usuários com timestamps
+- [ ] **Integração com APIs de pagamento** — Processar pagamentos online (PIX, cartão)
+- [ ] **Gamificação** — Badges, conquistas e ranking de usuários mais produtivos
+- [ ] **Gestão de ração/insumos** — Controlar estoque de ração, custos e consumo
+- [ ] **Dashboard público** — Link compartilhável com estatísticas públicas (sem dados sensíveis)
+- [ ] **API pública** — REST API documentada para integrações externas
+
+### ✅ Já Implementado
+
+- ✅ **Dashboard em tempo real** — Visualização de estoque com indicadores visuais (🟢🟡🔴)
+- ✅ **Gráficos interativos** — Chart.js com entradas vs saídas, faturamento e distribuição anual
+- ✅ **Exportação Excel** — Download de relatórios mensais e anuais em formato XLSX
+- ✅ **Exportação PDF** — Geração de relatórios mensais em PDF para impressão
+- ✅ **Filtros por período** — Visualizar dados por mês/ano específico
+- ✅ **Gestão de usuários** — Sistema completo de autenticação e permissões (admin/usuário)
+- ✅ **Gestão completa** — Entradas, vendas, quebrados, consumo pessoal e despesas
+- ✅ **Histórico de preços** — Controle de preços com histórico de alterações
+- ✅ **Backup automático** — Upload para Google Drive com agendamento e verificação
+- ✅ **Suporte PostgreSQL** — Deploy em produção com Vercel Postgres ou Supabase
+- ✅ **Cache inteligente** — Cache no frontend para reduzir requisições e melhorar UX
+
+---
+
+**Contribuições são bem-vindas!** Se deseja implementar alguma feature do roadmap, abra uma issue ou PR. 🚀
