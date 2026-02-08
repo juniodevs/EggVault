@@ -1,9 +1,7 @@
-# ═══════════════════════════════════════════════════════════════════════════
 # DEPENDÊNCIAS DE DESENVOLVIMENTO E TESTE
 # Use: pip install -r requirements-dev.txt
-# ═══════════════════════════════════════════════════════════════════════════
-
 # Dependências de produção
+
 -r requirements.txt
 
 # ── Testes E2E (Playwright) ──
