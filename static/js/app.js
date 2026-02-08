@@ -483,8 +483,7 @@ async function loadEstoque() {
 // ═══════════════════════════════════════════
 
 async function loadEntradas() {
-    const tbody = document.getElementById('entradas-list');
-    showTableSkeleton('entradas-list', 5, 4);
+    showTableSkeleton('entradas-hoje-list', 5, 2);
     
     try {
         const mes = currentMonth.entradas;
@@ -493,14 +492,60 @@ async function loadEntradas() {
         const res = await api(`/api/entradas?mes=${mes}`);
 
         if (res.data.length === 0) {
-            tbody.innerHTML =
-                '<tr><td colspan="5" class="empty-state">Nenhuma entrada registrada neste mês</td></tr>';
+            document.getElementById('entradas-hoje-list').innerHTML =
+                '<tr><td colspan="5" class="empty-state">Nenhuma entrada registrada hoje</td></tr>';
+            document.getElementById('entradas-anteriores-container').innerHTML =
+                '<div class="empty-state" style="padding: 2rem;">Nenhuma entrada anterior neste mês</div>';
+            document.getElementById('entradas-hoje-total').textContent = '0 ovos';
+            document.getElementById('entradas-mes-total').textContent = '0 ovos';
             return;
         }
 
-        tbody.innerHTML = res.data.map(e => `
+        // Agrupar entradas por data
+        const hoje = new Date().toISOString().split('T')[0];
+        const entradasPorDia = {};
+        let totalMes = 0;
+
+        res.data.forEach(entrada => {
+            const dataEntrada = entrada.data.split('T')[0];
+            if (!entradasPorDia[dataEntrada]) {
+                entradasPorDia[dataEntrada] = [];
+            }
+            entradasPorDia[dataEntrada].push(entrada);
+            totalMes += entrada.quantidade;
+        });
+
+        // Renderizar entradas de hoje
+        const entradasHoje = entradasPorDia[hoje] || [];
+        renderEntradasHoje(entradasHoje);
+
+        // Renderizar entradas dos dias anteriores
+        renderEntradasAnteriores(entradasPorDia, hoje);
+
+        // Atualizar total do mês
+        document.getElementById('entradas-mes-total').textContent = `${totalMes} ovos`;
+
+    } catch (e) {
+        console.error('Erro ao carregar entradas:', e);
+    }
+}
+
+function renderEntradasHoje(entradas) {
+    const tbody = document.getElementById('entradas-hoje-list');
+    
+    if (entradas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhuma entrada registrada hoje</td></tr>';
+        document.getElementById('entradas-hoje-total').textContent = '0 ovos';
+        return;
+    }
+
+    let totalHoje = 0;
+    tbody.innerHTML = entradas.map(e => {
+        totalHoje += e.quantidade;
+        const hora = new Date(e.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `
             <tr>
-                <td>${formatDate(e.data)}</td>
+                <td>${hora}</td>
                 <td><strong>${e.quantidade}</strong> ovos</td>
                 <td>${e.observacao || '—'}</td>
                 <td><span class="user-badge">${e.usuario_nome || '—'}</span></td>
@@ -510,11 +555,74 @@ async function loadEntradas() {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `;
+    }).join('');
 
-    } catch (e) {
-        console.error('Erro ao carregar entradas:', e);
+    document.getElementById('entradas-hoje-total').textContent = `${totalHoje} ovos`;
+}
+
+function renderEntradasAnteriores(entradasPorDia, hoje) {
+    const container = document.getElementById('entradas-anteriores-container');
+    
+    // Filtrar e ordenar datas anteriores (mais recente primeiro)
+    const datasAnteriores = Object.keys(entradasPorDia)
+        .filter(data => data !== hoje)
+        .sort((a, b) => b.localeCompare(a));
+
+    if (datasAnteriores.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding: 2rem;">Nenhuma entrada anterior neste mês</div>';
+        return;
     }
+
+    container.innerHTML = datasAnteriores.map(data => {
+        const entradas = entradasPorDia[data];
+        let totalDia = 0;
+        
+        const rows = entradas.map(e => {
+            totalDia += e.quantidade;
+            const hora = new Date(e.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            return `
+                <tr>
+                    <td>${hora}</td>
+                    <td><strong>${e.quantidade}</strong> ovos</td>
+                    <td>${e.observacao || '—'}</td>
+                    <td><span class="user-badge">${e.usuario_nome || '—'}</span></td>
+                    <td>
+                        <button class="btn-undo" onclick="undoEntrada(${e.id}, ${e.quantidade})" title="Desfazer — remover do estoque">
+                            <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const dataFormatada = formatDateLong(data);
+        
+        return `
+            <div class="day-section">
+                <div class="day-section-header">
+                    <span class="day-date">${dataFormatada}</span>
+                    <span class="day-total">Total: ${totalDia} ovos</span>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Quantidade</th>
+                                <th>Observação</th>
+                                <th>Usuário</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // ═══════════════════════════════════════════
@@ -522,7 +630,7 @@ async function loadEntradas() {
 // ═══════════════════════════════════════════
 
 async function loadVendas() {
-    showTableSkeleton('vendas-list', 6, 4);
+    showTableSkeleton('vendas-hoje-list', 6, 2);
     
     try {
         const mes = currentMonth.vendas;
@@ -545,17 +653,59 @@ async function loadVendas() {
 
         // Carregar lista de vendas
         const res = await api(`/api/saidas?mes=${mes}`);
-        const tbody = document.getElementById('vendas-list');
-
+        
         if (res.data.length === 0) {
-            tbody.innerHTML =
-                '<tr><td colspan="6" class="empty-state">Nenhuma venda registrada neste mês</td></tr>';
+            document.getElementById('vendas-hoje-list').innerHTML =
+                '<tr><td colspan="6" class="empty-state">Nenhuma venda registrada hoje</td></tr>';
+            document.getElementById('vendas-anteriores-container').innerHTML =
+                '<div class="empty-state" style="padding: 2rem;">Nenhuma venda anterior neste mês</div>';
+            document.getElementById('vendas-hoje-total').textContent = 'R$ 0,00';
+            document.getElementById('vendas-mes-total').textContent = 'R$ 0,00';
             return;
         }
 
-        tbody.innerHTML = res.data.map(s => `
+        // Agrupar vendas por data
+        const hoje = new Date().toISOString().split('T')[0];
+        const vendasPorDia = {};
+        let totalMes = 0;
+
+        res.data.forEach(venda => {
+            const dataVenda = venda.data.split('T')[0];
+            if (!vendasPorDia[dataVenda]) {
+                vendasPorDia[dataVenda] = [];
+            }
+            vendasPorDia[dataVenda].push(venda);
+            totalMes += venda.valor_total;
+        });
+
+        const vendasHoje = vendasPorDia[hoje] || [];
+        renderVendasHoje(vendasHoje);
+
+        renderVendasAnteriores(vendasPorDia, hoje);
+
+        document.getElementById('vendas-mes-total').textContent = formatCurrency(totalMes);
+
+    } catch (e) {
+        console.error('Erro ao carregar vendas:', e);
+    }
+}
+
+function renderVendasHoje(vendas) {
+    const tbody = document.getElementById('vendas-hoje-list');
+    
+    if (vendas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhuma venda registrada hoje</td></tr>';
+        document.getElementById('vendas-hoje-total').textContent = 'R$ 0,00';
+        return;
+    }
+
+    let totalHoje = 0;
+    tbody.innerHTML = vendas.map(s => {
+        totalHoje += s.valor_total;
+        const hora = new Date(s.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `
             <tr>
-                <td>${formatDate(s.data)}</td>
+                <td>${hora}</td>
                 <td><strong>${s.quantidade}</strong></td>
                 <td>${formatCurrency(s.preco_unitario)}</td>
                 <td><strong>${formatCurrency(s.valor_total)}</strong></td>
@@ -566,11 +716,86 @@ async function loadVendas() {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `;
+    }).join('');
 
-    } catch (e) {
-        console.error('Erro ao carregar vendas:', e);
+    document.getElementById('vendas-hoje-total').textContent = formatCurrency(totalHoje);
+}
+
+function renderVendasAnteriores(vendasPorDia, hoje) {
+    const container = document.getElementById('vendas-anteriores-container');
+    
+    // Filtrar e ordenar datas anteriores (mais recente primeiro)
+    const datasAnteriores = Object.keys(vendasPorDia)
+        .filter(data => data !== hoje)
+        .sort((a, b) => b.localeCompare(a));
+
+    if (datasAnteriores.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding: 2rem;">Nenhuma venda anterior neste mês</div>';
+        return;
     }
+
+    container.innerHTML = datasAnteriores.map(data => {
+        const vendas = vendasPorDia[data];
+        let totalDia = 0;
+        
+        const rows = vendas.map(s => {
+            totalDia += s.valor_total;
+            const hora = new Date(s.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            return `
+                <tr>
+                    <td>${hora}</td>
+                    <td><strong>${s.quantidade}</strong></td>
+                    <td>${formatCurrency(s.preco_unitario)}</td>
+                    <td><strong>${formatCurrency(s.valor_total)}</strong></td>
+                    <td><span class="user-badge">${s.usuario_nome || '—'}</span></td>
+                    <td>
+                        <button class="btn-undo" onclick="undoVenda(${s.id}, ${s.quantidade})" title="Desfazer — devolver ao estoque">
+                            <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const dataFormatada = formatDateLong(data);
+        
+        return `
+            <div class="day-section">
+                <div class="day-section-header">
+                    <span class="day-date">${dataFormatada}</span>
+                    <span class="day-total">Total: ${formatCurrency(totalDia)}</span>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Qtd</th>
+                                <th>Preço Unit.</th>
+                                <th>Total</th>
+                                <th>Usuário</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function formatDateLong(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('pt-BR', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
 }
 
 let lastEditedField = null;
@@ -612,7 +837,7 @@ function updateVendaUnitPrice() {
 // ═══════════════════════════════════════════
 
 async function loadQuebrados() {
-    showTableSkeleton('quebrados-list', 5, 4);
+    showTableSkeleton('quebrados-hoje-list', 5, 2);
     
     try {
         const mes = currentMonth.quebrados;
@@ -625,21 +850,62 @@ async function loadQuebrados() {
 
         // Carregar lista de quebrados
         const res = await api(`/api/quebrados?mes=${mes}`);
-        const tbody = document.getElementById('quebrados-list');
-
-        // Calcular total do mês
-        const totalMes = res.data.reduce((sum, q) => sum + q.quantidade, 0);
-        document.getElementById('quebrados-month-total').textContent = totalMes;
 
         if (res.data.length === 0) {
-            tbody.innerHTML =
-                '<tr><td colspan="5" class="empty-state">Nenhum registro de quebra neste mês</td></tr>';
+            document.getElementById('quebrados-hoje-list').innerHTML =
+                '<tr><td colspan="5" class="empty-state">Nenhum registro de quebra hoje</td></tr>';
+            document.getElementById('quebrados-anteriores-container').innerHTML =
+                '<div class="empty-state" style="padding: 2rem;">Nenhum registro anterior neste mês</div>';
+            document.getElementById('quebrados-hoje-total').textContent = '0 ovos';
+            document.getElementById('quebrados-mes-total').textContent = '0 ovos';
             return;
         }
 
-        tbody.innerHTML = res.data.map(q => `
+        // Agrupar quebrados por data
+        const hoje = new Date().toISOString().split('T')[0];
+        const quebradosPorDia = {};
+        let totalMes = 0;
+
+        res.data.forEach(quebrado => {
+            const dataQuebrado = quebrado.data.split('T')[0];
+            if (!quebradosPorDia[dataQuebrado]) {
+                quebradosPorDia[dataQuebrado] = [];
+            }
+            quebradosPorDia[dataQuebrado].push(quebrado);
+            totalMes += quebrado.quantidade;
+        });
+
+        // Renderizar quebrados de hoje
+        const quebradosHoje = quebradosPorDia[hoje] || [];
+        renderQuebradosHoje(quebradosHoje);
+
+        // Renderizar quebrados dos dias anteriores
+        renderQuebradosAnteriores(quebradosPorDia, hoje);
+
+        // Atualizar total do mês
+        document.getElementById('quebrados-mes-total').textContent = `${totalMes} ovos`;
+
+    } catch (e) {
+        console.error('Erro ao carregar quebrados:', e);
+    }
+}
+
+function renderQuebradosHoje(quebrados) {
+    const tbody = document.getElementById('quebrados-hoje-list');
+    
+    if (quebrados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum registro de quebra hoje</td></tr>';
+        document.getElementById('quebrados-hoje-total').textContent = '0 ovos';
+        return;
+    }
+
+    let totalHoje = 0;
+    tbody.innerHTML = quebrados.map(q => {
+        totalHoje += q.quantidade;
+        const hora = new Date(q.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `
             <tr>
-                <td>${formatDate(q.data)}</td>
+                <td>${hora}</td>
                 <td><strong>${q.quantidade}</strong> ovos</td>
                 <td>${q.motivo || '—'}</td>
                 <td><span class="user-badge">${q.usuario_nome || '—'}</span></td>
@@ -649,11 +915,74 @@ async function loadQuebrados() {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `;
+    }).join('');
 
-    } catch (e) {
-        console.error('Erro ao carregar quebrados:', e);
+    document.getElementById('quebrados-hoje-total').textContent = `${totalHoje} ovos`;
+}
+
+function renderQuebradosAnteriores(quebradosPorDia, hoje) {
+    const container = document.getElementById('quebrados-anteriores-container');
+    
+    // Filtrar e ordenar datas anteriores (mais recente primeiro)
+    const datasAnteriores = Object.keys(quebradosPorDia)
+        .filter(data => data !== hoje)
+        .sort((a, b) => b.localeCompare(a));
+
+    if (datasAnteriores.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding: 2rem;">Nenhum registro anterior neste mês</div>';
+        return;
     }
+
+    container.innerHTML = datasAnteriores.map(data => {
+        const quebrados = quebradosPorDia[data];
+        let totalDia = 0;
+        
+        const rows = quebrados.map(q => {
+            totalDia += q.quantidade;
+            const hora = new Date(q.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            return `
+                <tr>
+                    <td>${hora}</td>
+                    <td><strong>${q.quantidade}</strong> ovos</td>
+                    <td>${q.motivo || '—'}</td>
+                    <td><span class="user-badge">${q.usuario_nome || '—'}</span></td>
+                    <td>
+                        <button class="btn-undo" onclick="undoQuebrado(${q.id}, ${q.quantidade})" title="Desfazer — devolver ao estoque">
+                            <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const dataFormatada = formatDateLong(data);
+        
+        return `
+            <div class="day-section">
+                <div class="day-section-header">
+                    <span class="day-date">${dataFormatada}</span>
+                    <span class="day-total" style="background: linear-gradient(135deg, #fef2f2, #fee2e2); color: #dc2626;">Total: ${totalDia} ovos</span>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Quantidade</th>
+                                <th>Motivo</th>
+                                <th>Usuário</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 async function undoQuebrado(entryId, quantidade) {
@@ -673,8 +1002,7 @@ async function undoQuebrado(entryId, quantidade) {
 // ═══════════════════════════════════════════
 
 async function loadDespesas() {
-    const tbody = document.getElementById('despesas-list');
-    showTableSkeleton('despesas-list', 5, 4);
+    showTableSkeleton('despesas-hoje-list', 5, 2);
     
     try {
         const mes = currentMonth.despesas;
@@ -682,19 +1010,61 @@ async function loadDespesas() {
 
         const res = await api(`/api/despesas?mes=${mes}`);
 
-        // Calcular total do mês
-        const totalMes = res.data.reduce((sum, d) => sum + (d.valor || 0), 0);
-        document.getElementById('despesas-month-total').textContent = formatCurrency(totalMes);
-
         if (res.data.length === 0) {
-            tbody.innerHTML =
-                '<tr><td colspan="5" class="empty-state">Nenhuma despesa registrada neste mês</td></tr>';
+            document.getElementById('despesas-hoje-list').innerHTML =
+                '<tr><td colspan="5" class="empty-state">Nenhuma despesa registrada hoje</td></tr>';
+            document.getElementById('despesas-anteriores-container').innerHTML =
+                '<div class="empty-state" style="padding: 2rem;">Nenhuma despesa anterior neste mês</div>';
+            document.getElementById('despesas-hoje-total').textContent = 'R$ 0,00';
+            document.getElementById('despesas-mes-total').textContent = 'R$ 0,00';
             return;
         }
 
-        tbody.innerHTML = res.data.map(d => `
+        // Agrupar despesas por data
+        const hoje = new Date().toISOString().split('T')[0];
+        const despesasPorDia = {};
+        let totalMes = 0;
+
+        res.data.forEach(despesa => {
+            const dataDespesa = despesa.data.split('T')[0];
+            if (!despesasPorDia[dataDespesa]) {
+                despesasPorDia[dataDespesa] = [];
+            }
+            despesasPorDia[dataDespesa].push(despesa);
+            totalMes += despesa.valor || 0;
+        });
+
+        // Renderizar despesas de hoje
+        const despesasHoje = despesasPorDia[hoje] || [];
+        renderDespesasHoje(despesasHoje);
+
+        // Renderizar despesas dos dias anteriores
+        renderDespesasAnteriores(despesasPorDia, hoje);
+
+        // Atualizar total do mês
+        document.getElementById('despesas-mes-total').textContent = formatCurrency(totalMes);
+
+    } catch (e) {
+        console.error('Erro ao carregar despesas:', e);
+    }
+}
+
+function renderDespesasHoje(despesas) {
+    const tbody = document.getElementById('despesas-hoje-list');
+    
+    if (despesas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhuma despesa registrada hoje</td></tr>';
+        document.getElementById('despesas-hoje-total').textContent = 'R$ 0,00';
+        return;
+    }
+
+    let totalHoje = 0;
+    tbody.innerHTML = despesas.map(d => {
+        totalHoje += d.valor || 0;
+        const hora = new Date(d.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `
             <tr>
-                <td>${formatDate(d.data)}</td>
+                <td>${hora}</td>
                 <td><strong>${formatCurrency(d.valor)}</strong></td>
                 <td>${d.descricao || '—'}</td>
                 <td><span class="user-badge">${d.usuario_nome || '—'}</span></td>
@@ -704,11 +1074,74 @@ async function loadDespesas() {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `;
+    }).join('');
 
-    } catch (e) {
-        console.error('Erro ao carregar despesas:', e);
+    document.getElementById('despesas-hoje-total').textContent = formatCurrency(totalHoje);
+}
+
+function renderDespesasAnteriores(despesasPorDia, hoje) {
+    const container = document.getElementById('despesas-anteriores-container');
+    
+    // Filtrar e ordenar datas anteriores (mais recente primeiro)
+    const datasAnteriores = Object.keys(despesasPorDia)
+        .filter(data => data !== hoje)
+        .sort((a, b) => b.localeCompare(a));
+
+    if (datasAnteriores.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding: 2rem;">Nenhuma despesa anterior neste mês</div>';
+        return;
     }
+
+    container.innerHTML = datasAnteriores.map(data => {
+        const despesas = despesasPorDia[data];
+        let totalDia = 0;
+        
+        const rows = despesas.map(d => {
+            totalDia += d.valor || 0;
+            const hora = new Date(d.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            return `
+                <tr>
+                    <td>${hora}</td>
+                    <td><strong>${formatCurrency(d.valor)}</strong></td>
+                    <td>${d.descricao || '—'}</td>
+                    <td><span class="user-badge">${d.usuario_nome || '—'}</span></td>
+                    <td>
+                        <button class="btn-undo" onclick="undoDespesa(${d.id}, ${d.valor})" title="Remover despesa">
+                            <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const dataFormatada = formatDateLong(data);
+        
+        return `
+            <div class="day-section">
+                <div class="day-section-header">
+                    <span class="day-date">${dataFormatada}</span>
+                    <span class="day-total" style="background: linear-gradient(135deg, #fff7ed, #fed7aa); color: #c2410c;">Total: ${formatCurrency(totalDia)}</span>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Valor</th>
+                                <th>Descrição</th>
+                                <th>Usuário</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 async function undoDespesa(entryId, valor) {

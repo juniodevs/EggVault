@@ -288,34 +288,47 @@
 
                 <div class="card list-card">
                     <div class="card-header-row">
-                        <h3><i class="fas fa-list"></i> Entradas Recentes</h3>
-                        <div class="month-filter">
-                            <button class="btn btn-icon" onclick="changeMonth('entradas', -1)"><i class="fas fa-chevron-left"></i></button>
-                            <span id="entradas-month-label" class="month-label">—</span>
-                            <button class="btn btn-icon" onclick="changeMonth('entradas', 1)"><i class="fas fa-chevron-right"></i></button>
-                        </div>
+                        <h3><i class="fas fa-calendar-day"></i> Entradas de Hoje</h3>
+                        <div class="day-total" id="entradas-hoje-total">0 ovos</div>
                     </div>
                     <div class="table-wrapper">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Data</th>
+                                    <th>Hora</th>
                                     <th>Quantidade</th>
                                     <th>Observação</th>
                                     <th>Usuário</th>
                                     <th>Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="entradas-list">
-                                <tr><td colspan="5" class="empty-state">Nenhuma entrada registrada</td></tr>
+                            <tbody id="entradas-hoje-list">
+                                <tr><td colspan="5" class="empty-state">Nenhuma entrada registrada hoje</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-history"></i> Entradas Anteriores do Mês</h3>
+                        <div class="month-filter">
+                            <button class="btn btn-icon" onclick="changeMonth('entradas', -1)"><i class="fas fa-chevron-left"></i></button>
+                            <span id="entradas-month-label" class="month-label">—</span>
+                            <button class="btn btn-icon" onclick="changeMonth('entradas', 1)"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div id="entradas-anteriores-container">
+                        <div class="empty-state" style="padding: 2rem;">Nenhuma entrada anterior neste mês</div>
+                    </div>
+                    <div class="month-total-card">
+                        <span>Total do Mês:</span>
+                        <strong id="entradas-mes-total">0 ovos</strong>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- ══════════ ABA: VENDAS ══════════ -->
         <section id="tab-vendas" class="tab-content">
             <div class="page-header">
                 <h1><i class="fas fa-shopping-cart"></i> Vendas / Saídas</h1>
@@ -348,20 +361,17 @@
                     </form>
                 </div>
 
+                <!-- Vendas de Hoje -->
                 <div class="card list-card">
                     <div class="card-header-row">
-                        <h3><i class="fas fa-list"></i> Vendas Recentes</h3>
-                        <div class="month-filter">
-                            <button class="btn btn-icon" onclick="changeMonth('vendas', -1)"><i class="fas fa-chevron-left"></i></button>
-                            <span id="vendas-month-label" class="month-label">—</span>
-                            <button class="btn btn-icon" onclick="changeMonth('vendas', 1)"><i class="fas fa-chevron-right"></i></button>
-                        </div>
+                        <h3><i class="fas fa-calendar-day"></i> Vendas de Hoje</h3>
+                        <div class="day-total" id="vendas-hoje-total">R$ 0,00</div>
                     </div>
                     <div class="table-wrapper">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Data</th>
+                                    <th>Hora</th>
                                     <th>Qtd</th>
                                     <th>Preço Unit.</th>
                                     <th>Total</th>
@@ -369,10 +379,29 @@
                                     <th>Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="vendas-list">
-                                <tr><td colspan="6" class="empty-state">Nenhuma venda registrada</td></tr>
+                            <tbody id="vendas-hoje-list">
+                                <tr><td colspan="6" class="empty-state">Nenhuma venda registrada hoje</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Vendas dos Dias Anteriores -->
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-history"></i> Vendas Anteriores do Mês</h3>
+                        <div class="month-filter">
+                            <button class="btn btn-icon" onclick="changeMonth('vendas', -1)"><i class="fas fa-chevron-left"></i></button>
+                            <span id="vendas-month-label" class="month-label">—</span>
+                            <button class="btn btn-icon" onclick="changeMonth('vendas', 1)"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div id="vendas-anteriores-container">
+                        <div class="empty-state" style="padding: 2rem;">Nenhuma venda anterior neste mês</div>
+                    </div>
+                    <div class="month-total-card">
+                        <span>Total do Mês:</span>
+                        <strong id="vendas-mes-total">R$ 0,00</strong>
                     </div>
                 </div>
             </div>
@@ -407,34 +436,46 @@
                     </form>
                 </div>
 
+                <!-- Quebrados de Hoje -->
                 <div class="card list-card">
                     <div class="card-header-row">
-                        <h3><i class="fas fa-list"></i> Registros de Quebra</h3>
-                        <div class="month-filter">
-                            <button class="btn btn-icon" onclick="changeMonth('quebrados', -1)"><i class="fas fa-chevron-left"></i></button>
-                            <span id="quebrados-month-label" class="month-label">—</span>
-                            <button class="btn btn-icon" onclick="changeMonth('quebrados', 1)"><i class="fas fa-chevron-right"></i></button>
-                        </div>
-                    </div>
-                    <div class="quebrados-total-bar">
-                        <i class="fas fa-heart-crack"></i>
-                        Total quebrados neste mês: <strong id="quebrados-month-total">0</strong> ovos
+                        <h3><i class="fas fa-calendar-day"></i> Quebrados de Hoje</h3>
+                        <div class="day-total" id="quebrados-hoje-total" style="background: linear-gradient(135deg, #fef2f2, #fee2e2); color: #dc2626;">0 ovos</div>
                     </div>
                     <div class="table-wrapper">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Data</th>
+                                    <th>Hora</th>
                                     <th>Quantidade</th>
                                     <th>Motivo</th>
                                     <th>Usuário</th>
                                     <th>Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="quebrados-list">
-                                <tr><td colspan="5" class="empty-state">Nenhum registro de quebra</td></tr>
+                            <tbody id="quebrados-hoje-list">
+                                <tr><td colspan="5" class="empty-state">Nenhum registro de quebra hoje</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Quebrados dos Dias Anteriores -->
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-history"></i> Quebrados Anteriores do Mês</h3>
+                        <div class="month-filter">
+                            <button class="btn btn-icon" onclick="changeMonth('quebrados', -1)"><i class="fas fa-chevron-left"></i></button>
+                            <span id="quebrados-month-label" class="month-label">—</span>
+                            <button class="btn btn-icon" onclick="changeMonth('quebrados', 1)"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div id="quebrados-anteriores-container">
+                        <div class="empty-state" style="padding: 2rem;">Nenhum registro anterior neste mês</div>
+                    </div>
+                    <div class="month-total-card" style="background: linear-gradient(135deg, #fef2f2, #fee2e2);">
+                        <span>Total do Mês:</span>
+                        <strong id="quebrados-mes-total" style="color: #dc2626;">0 ovos</strong>
                     </div>
                 </div>
             </div>
@@ -465,34 +506,46 @@
                     </form>
                 </div>
 
+                <!-- Despesas de Hoje -->
                 <div class="card list-card">
                     <div class="card-header-row">
-                        <h3><i class="fas fa-list"></i> Despesas do Mês</h3>
-                        <div class="month-filter">
-                            <button class="btn btn-icon" onclick="changeMonth('despesas', -1)"><i class="fas fa-chevron-left"></i></button>
-                            <span id="despesas-month-label" class="month-label">—</span>
-                            <button class="btn btn-icon" onclick="changeMonth('despesas', 1)"><i class="fas fa-chevron-right"></i></button>
-                        </div>
-                    </div>
-                    <div class="despesas-total-bar">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                        Total despesas neste mês: <strong id="despesas-month-total">R$ 0,00</strong>
+                        <h3><i class="fas fa-calendar-day"></i> Despesas de Hoje</h3>
+                        <div class="day-total" id="despesas-hoje-total" style="background: linear-gradient(135deg, #fff7ed, #fed7aa); color: #c2410c;">R$ 0,00</div>
                     </div>
                     <div class="table-wrapper">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Data</th>
+                                    <th>Hora</th>
                                     <th>Valor</th>
                                     <th>Descrição</th>
                                     <th>Usuário</th>
                                     <th>Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="despesas-list">
-                                <tr><td colspan="5" class="empty-state">Nenhuma despesa registrada</td></tr>
+                            <tbody id="despesas-hoje-list">
+                                <tr><td colspan="5" class="empty-state">Nenhuma despesa registrada hoje</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Despesas dos Dias Anteriores -->
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-history"></i> Despesas Anteriores do Mês</h3>
+                        <div class="month-filter">
+                            <button class="btn btn-icon" onclick="changeMonth('despesas', -1)"><i class="fas fa-chevron-left"></i></button>
+                            <span id="despesas-month-label" class="month-label">—</span>
+                            <button class="btn btn-icon" onclick="changeMonth('despesas', 1)"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div id="despesas-anteriores-container">
+                        <div class="empty-state" style="padding: 2rem;">Nenhuma despesa anterior neste mês</div>
+                    </div>
+                    <div class="month-total-card" style="background: linear-gradient(135deg, #fff7ed, #fed7aa);">
+                        <span>Total do Mês:</span>
+                        <strong id="despesas-mes-total" style="color: #c2410c;">R$ 0,00</strong>
                     </div>
                 </div>
             </div>
