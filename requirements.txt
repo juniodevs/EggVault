@@ -4,6 +4,13 @@ reportlab==4.4.9
 psycopg2-binary>=2.9.0
 python-dotenv>=1.0.0
 
+# ── Backup para Google Drive ──
+google-auth>=2.25.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+google-api-python-client>=2.110.0
+schedule>=1.2.0
+
 # ── Testes E2E (Playwright) ──
 pytest>=8.0.0
 playwright>=1.40.0

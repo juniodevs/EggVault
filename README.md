@@ -44,6 +44,54 @@ Ou com unittest:
 python -m unittest tests.test_app -v
 ```
 
+## 🔒 Backup Automático para Google Drive
+
+### Configuração
+
+1. **Instalar dependências:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Configurar .env:**
+   ```env
+   # Google Drive - Obtenha em https://console.cloud.google.com
+   GOOGLE_DRIVE_CLIENT_ID=seu_client_id.apps.googleusercontent.com
+   GOOGLE_DRIVE_CLIENT_SECRET=seu_client_secret
+   GOOGLE_DRIVE_REFRESH_TOKEN=seu_refresh_token
+   
+   # Opcional: ID da pasta no Google Drive para organizar backups
+   GDRIVE_BACKUP_FOLDER_ID=id_da_pasta
+   ```
+
+3. **Obter credenciais Google Drive:**
+   - Acesse: https://console.cloud.google.com/
+   - Crie projeto → Ative "Google Drive API"
+   - Crie credenciais OAuth 2.0 (Desktop app)
+   - Use o script helper para obter o refresh token:
+     ```bash
+     python -c "from services.backup_service import obter_refresh_token; obter_refresh_token()"
+     ```
+
+4. **Executar backup:**
+   ```bash
+   # Manual
+   python backup_manual.py
+   
+   # Automático (diário às 3h)
+   python backup_agendado.py
+   
+   # Ou use Task Scheduler (Windows) com executar_backup.bat
+   ```
+
+### Recursos
+
+- ✅ Backup automático do PostgreSQL
+- ✅ Backup automático do SQLite
+- ✅ Upload para Google Drive
+- ✅ Mantém 5 backups locais mais recentes
+- ✅ Histórico completo no Google Drive
+
 ## 🏗️ Arquitetura
 
 ```
@@ -61,7 +109,8 @@ Egg/
 │   ├── entrada_service.py
 │   ├── saida_service.py
 │   ├── preco_service.py
-│   └── relatorio_service.py
+│   ├── relatorio_service.py
+│   └── backup_service.py          # Serviço de backup
 ├── templates/
 │   └── index.html                  # Interface SPA
 ├── static/
@@ -69,6 +118,7 @@ Egg/
 │   └── js/app.js                  # Frontend JavaScript
 ├── tests/
 │   └── test_app.py                # Testes unitários e funcionais
+├── backup_manual.py                # Script de backup
 ├── requirements.txt
 └── README.md
 ```

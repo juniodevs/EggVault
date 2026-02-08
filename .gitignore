@@ -27,3 +27,8 @@ dist/
 .coverage
 htmlcov/
 test-results/
+
+# Backups
+backups/
+*.sql
+*.dump
