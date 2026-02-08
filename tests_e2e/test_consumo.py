@@ -273,24 +273,41 @@ class TestConsumoValidation:
     def test_consumo_estoque_insuficiente(self, authenticated_page):
         """Deve validar estoque insuficiente."""
         page = authenticated_page
-        _add_stock(page, 5)  # Apenas 5 ovos
+        
+        page.click('li[data-tab="estoque"]')
+        page.wait_for_timeout(1000)
+        stock_atual = int(page.locator("#stock-quantity").inner_text())
+        
+        if stock_atual > 0:
+            _enable_consumo(page)
+            page.click('li[data-tab="consumo"]')
+            page.wait_for_timeout(500)
+            page.fill("#consumo-quantidade", str(stock_atual))
+            page.fill("#consumo-observacao", "Limpar estoque para teste")
+            page.click('#form-consumo button[type="submit"]')
+            page.wait_for_timeout(2000)
+        
+        _add_stock(page, 5)
         _enable_consumo(page)
+
+        page.click('li[data-tab="estoque"]')
+        page.wait_for_timeout(1000)
+        estoque_verificado = int(page.locator("#stock-quantity").inner_text())
+        assert estoque_verificado == 5, f"Estoque deveria ser 5, mas é {estoque_verificado}"
 
         page.click('li[data-tab="consumo"]')
         page.wait_for_timeout(500)
 
-        # Aguardar toasts antigos desaparecerem
-        page.wait_for_timeout(4000)
+        page.wait_for_timeout(5000)
+        
+        page.evaluate("document.getElementById('toast-container').innerHTML = ''")
 
         # Tentar consumir mais que o disponível
         page.fill("#consumo-quantidade", "10")
         page.click('#form-consumo button[type="submit"]')
         
-        # Aguardar novo toast aparecer
-        page.wait_for_timeout(500)
-
-        # Verificar mensagem de erro - procurar por toast que contenha "insuficiente"
-        toast = page.locator("#toast-container .toast:has-text('insuficiente')")
+        toast = page.locator("#toast-container .toast").first
         toast.wait_for(state="visible", timeout=5000)
+        
         text = toast.inner_text()
-        assert "insuficiente" in text.lower()
+        assert "insuficiente" in text.lower(), f"Toast deveria conter 'insuficiente', mas contém: {text}"
