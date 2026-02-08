@@ -12,6 +12,7 @@ from services.saida_service import SaidaService
 from services.preco_service import PrecoService
 from services.relatorio_service import RelatorioService
 from services.quebrado_service import QuebradoService
+from services.consumo_service import ConsumoService
 from services.despesa_service import DespesaService
 from services.auth_service import AuthService
 from services.export_service import ExportService
@@ -391,6 +392,65 @@ def delete_quebrado(entry_id):
 
 
 # ═══════════════════════════════════════════
+# API — CONSUMO PESSOAL
+# ═══════════════════════════════════════════
+
+@app.route('/api/consumo', methods=['GET'])
+@login_required
+def get_consumo():
+    """Lista registros de consumo pessoal filtrados por mês."""
+    try:
+        mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        consumo = ConsumoService.listar(mes)
+        return jsonify({'success': True, 'data': consumo})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/consumo', methods=['POST'])
+@login_required
+def add_consumo():
+    """Registra consumo pessoal de ovos."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
+
+        quantidade = int(data.get('quantidade', 0))
+        observacao = data.get('observacao', '')
+        entry_id = ConsumoService.registrar(
+            quantidade, observacao,
+            usuario_id=request.usuario['id'],
+            usuario_nome=request.usuario['nome'] or request.usuario['username']
+        )
+        return jsonify({
+            'success': True,
+            'id': entry_id,
+            'message': f'{quantidade} ovos registrados como consumo pessoal'
+        })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/consumo/<int:entry_id>', methods=['DELETE'])
+@login_required
+def delete_consumo(entry_id):
+    """Remove um registro de consumo e devolve ao estoque."""
+    try:
+        quantidade = ConsumoService.remover(entry_id)
+        return jsonify({
+            'success': True,
+            'message': f'{quantidade} ovos devolvidos ao estoque'
+        })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ═══════════════════════════════════════════
 # API — DESPESAS
 # ═══════════════════════════════════════════
 
@@ -492,6 +552,8 @@ def get_meses():
                 UNION
                 SELECT mes_referencia FROM quebrados
                 UNION
+                SELECT mes_referencia FROM consumo
+                UNION
                 SELECT mes_referencia FROM despesas
             ) AS t ORDER BY mes_referencia DESC
         """)
@@ -580,6 +642,73 @@ def admin_deletar_usuario(usuario_id):
         return jsonify({'success': True, 'message': 'Usuário removido com sucesso'})
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ═══════════════════════════════════════════
+# API — CONFIGURAÇÕES DO ADMIN
+# ═══════════════════════════════════════════
+
+@app.route('/api/admin/configuracoes', methods=['GET'])
+@admin_required
+def admin_get_configuracoes():
+    """Retorna todas as configurações (apenas admin)."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT chave, valor FROM configuracoes")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        config = {row['chave']: row['valor'] for row in rows}
+        return jsonify({'success': True, 'data': config})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/configuracoes', methods=['PUT'])
+@admin_required
+def admin_update_configuracoes():
+    """Atualiza configurações (apenas admin)."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Atualizar consumo_habilitado se fornecido
+        if 'consumo_habilitado' in data:
+            valor = '1' if data['consumo_habilitado'] else '0'
+            cursor.execute(
+                """INSERT INTO configuracoes (chave, valor, atualizado_em) 
+                   VALUES (?, ?, CURRENT_TIMESTAMP)
+                   ON CONFLICT(chave) DO UPDATE SET valor = ?, atualizado_em = CURRENT_TIMESTAMP""",
+                ('consumo_habilitado', valor, valor)
+            )
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Configurações atualizadas'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/configuracoes/consumo-habilitado', methods=['GET'])
+@login_required
+def get_consumo_habilitado():
+    """Verifica se o consumo está habilitado (todos os usuários)."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT valor FROM configuracoes WHERE chave = ?", ('consumo_habilitado',))
+        row = cursor.fetchone()
+        conn.close()
+        
+        habilitado = row['valor'] == '1' if row else False
+        return jsonify({'success': True, 'data': {'habilitado': habilitado}})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

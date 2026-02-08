@@ -147,6 +147,10 @@
                 <i class="fas fa-heart-crack"></i>
                 <span>Quebrados</span>
             </li>
+            <li data-tab="consumo" id="nav-consumo" style="display:none;">
+                <i class="fas fa-utensils"></i>
+                <span>Consumo</span>
+            </li>
             <li data-tab="despesas">
                 <i class="fas fa-file-invoice-dollar"></i>
                 <span>Despesas</span>
@@ -481,6 +485,80 @@
             </div>
         </section>
 
+        <!-- ══════════ ABA: CONSUMO PESSOAL ══════════ -->
+        <section id="tab-consumo" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-utensils"></i> Consumo Pessoal</h1>
+                <p class="subtitle">Registre o consumo pessoal de ovos</p>
+            </div>
+
+            <div class="content-grid">
+                <div class="card form-card">
+                    <h3><i class="fas fa-plus-circle"></i> Registrar Consumo</h3>
+                    <div class="stock-info-bar stock-info-bar-warning" id="consumo-stock-info">
+                        <i class="fas fa-warehouse"></i>
+                        Estoque disponível: <strong id="consumo-stock-qty">0</strong> ovos
+                    </div>
+                    <form id="form-consumo">
+                        <div class="form-group">
+                            <label for="consumo-quantidade">Quantidade Consumida</label>
+                            <input type="number" id="consumo-quantidade" min="1" step="1" required placeholder="Ex: 3">
+                        </div>
+                        <div class="form-group">
+                            <label for="consumo-observacao">Observação (opcional)</label>
+                            <textarea id="consumo-observacao" rows="3" placeholder="Ex: Café da manhã..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-utensils"></i> Registrar Consumo
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Consumo de Hoje -->
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-calendar-day"></i> Consumo de Hoje</h3>
+                        <div class="day-total" id="consumo-hoje-total" style="background: linear-gradient(135deg, #fef3c7, #fde68a); color: #d97706;">0 ovos</div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Quantidade</th>
+                                    <th>Observação</th>
+                                    <th>Usuário</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="consumo-hoje-list">
+                                <tr><td colspan="5" class="empty-state">Nenhum registro de consumo hoje</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Consumo dos Dias Anteriores -->
+                <div class="card list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-history"></i> Consumo Anterior do Mês</h3>
+                        <div class="month-filter">
+                            <button class="btn btn-icon" onclick="changeMonth('consumo', -1)"><i class="fas fa-chevron-left"></i></button>
+                            <span id="consumo-month-label" class="month-label">—</span>
+                            <button class="btn btn-icon" onclick="changeMonth('consumo', 1)"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div id="consumo-anteriores-container">
+                        <div class="empty-state" style="padding: 2rem;">Nenhum registro anterior neste mês</div>
+                    </div>
+                    <div class="month-total-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                        <span>Total do Mês:</span>
+                        <strong id="consumo-mes-total" style="color: #d97706;">0 ovos</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- ══════════ ABA: DESPESAS ══════════ -->
         <section id="tab-despesas" class="tab-content">
             <div class="page-header">
@@ -710,6 +788,22 @@
             </div>
 
             <div class="content-grid">
+                <div class="card form-card">
+                    <h3><i class="fas fa-cog"></i> Configurações</h3>
+                    <form id="form-configuracoes">
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="config-consumo-habilitado">
+                                <span>Habilitar Aba de Consumo Pessoal</span>
+                            </label>
+                            <small class="form-hint">Quando ativada, permite registrar consumo pessoal de ovos que serão subtraídos do estoque</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salvar Configurações
+                        </button>
+                    </form>
+                </div>
+
                 <div class="card form-card">
                     <h3><i class="fas fa-user-plus"></i> Criar Nova Conta</h3>
                     <form id="form-criar-usuario">

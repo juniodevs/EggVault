@@ -200,6 +200,16 @@ _SQLITE_SCHEMA = '''
         usuario_nome TEXT DEFAULT ''
     );
 
+    CREATE TABLE IF NOT EXISTS consumo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quantidade INTEGER NOT NULL CHECK(quantidade > 0),
+        data DATETIME DEFAULT CURRENT_TIMESTAMP,
+        observacao TEXT DEFAULT '',
+        mes_referencia TEXT NOT NULL,
+        usuario_id INTEGER,
+        usuario_nome TEXT DEFAULT ''
+    );
+
     CREATE TABLE IF NOT EXISTS despesas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         valor REAL NOT NULL CHECK(valor > 0),
@@ -239,6 +249,13 @@ _SQLITE_SCHEMA = '''
         criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
         expira_em DATETIME NOT NULL,
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS configuracoes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chave TEXT NOT NULL UNIQUE,
+        valor TEXT NOT NULL,
+        atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 '''
 
@@ -287,6 +304,16 @@ _POSTGRES_SCHEMA = '''
         usuario_nome TEXT DEFAULT ''
     );
 
+    CREATE TABLE IF NOT EXISTS consumo (
+        id SERIAL PRIMARY KEY,
+        quantidade INTEGER NOT NULL CHECK(quantidade > 0),
+        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        observacao TEXT DEFAULT '',
+        mes_referencia TEXT NOT NULL,
+        usuario_id INTEGER,
+        usuario_nome TEXT DEFAULT ''
+    );
+
     CREATE TABLE IF NOT EXISTS despesas (
         id SERIAL PRIMARY KEY,
         valor DOUBLE PRECISION NOT NULL CHECK(valor > 0),
@@ -327,6 +354,13 @@ _POSTGRES_SCHEMA = '''
         expira_em TIMESTAMP NOT NULL,
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     );
+
+    CREATE TABLE IF NOT EXISTS configuracoes (
+        id SERIAL PRIMARY KEY,
+        chave TEXT NOT NULL UNIQUE,
+        valor TEXT NOT NULL,
+        atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
 '''
 
 
@@ -356,8 +390,11 @@ def init_db():
         ('saidas', 'usuario_nome', "TEXT DEFAULT ''"),
         ('quebrados', 'usuario_id', 'INTEGER'),
         ('quebrados', 'usuario_nome', "TEXT DEFAULT ''"),
+        ('consumo', 'usuario_id', 'INTEGER'),
+        ('consumo', 'usuario_nome', "TEXT DEFAULT ''"),
         ('usuarios', 'is_admin', 'INTEGER NOT NULL DEFAULT 0'),
         ('resumo_mensal', 'total_despesas', 'REAL NOT NULL DEFAULT 0.0' if not USE_POSTGRES else 'DOUBLE PRECISION NOT NULL DEFAULT 0.0'),
+        ('resumo_mensal', 'total_consumo', 'INTEGER NOT NULL DEFAULT 0'),
     ]
 
     for table, col, col_type in _migrate_columns:
@@ -415,6 +452,14 @@ def init_db():
     else:
         # Garantir que o admin existente tenha is_admin=1
         cursor.execute("UPDATE usuarios SET is_admin = 1 WHERE username = 'admin' AND is_admin = 0")
+
+    # ── Configurações padrão ─────────────
+    cursor.execute("SELECT COUNT(*) as count FROM configuracoes WHERE chave = ?", ('consumo_habilitado',))
+    if cursor.fetchone()['count'] == 0:
+        cursor.execute(
+            "INSERT INTO configuracoes (chave, valor) VALUES (?, ?)",
+            ('consumo_habilitado', '0')  # Desabilitado por padrão
+        )
 
     conn.commit()
     conn.close()

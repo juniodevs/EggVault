@@ -3,6 +3,7 @@ const currentMonth = {
     entradas: getCurrentMonth(),
     vendas: getCurrentMonth(),
     quebrados: getCurrentMonth(),
+    consumo: getCurrentMonth(),
     despesas: getCurrentMonth(),
     relatorios: getCurrentMonth()
 };
@@ -76,6 +77,8 @@ async function checkAuth() {
             // Mostrar aba admin se for administrador
             const navAdmin = document.getElementById('nav-admin');
             if (navAdmin) navAdmin.style.display = data.data.is_admin ? '' : 'none';
+            // Verificar se consumo está habilitado
+            await checkConsumoHabilitado();
             return true;
         } else {
             clearToken();
@@ -115,6 +118,8 @@ async function doLogin(username, password) {
             // Mostrar aba admin se for administrador
             const navAdmin = document.getElementById('nav-admin');
             if (navAdmin) navAdmin.style.display = data.data.usuario.is_admin ? '' : 'none';
+            // Verificar se consumo está habilitado
+            await checkConsumoHabilitado();
             loadEstoque();
             showToast(`Bem-vindo, ${data.data.usuario.nome || data.data.usuario.username}!`, 'success');
         } else {
@@ -404,6 +409,7 @@ async function loadTabData(tabName) {
         case 'entradas':   await loadEntradas(); break;
         case 'vendas':     await loadVendas(); break;
         case 'quebrados':  await loadQuebrados(); break;
+        case 'consumo':    await loadConsumo(); break;
         case 'despesas':   await loadDespesas(); break;
         case 'precos':     await loadPrecos(); break;
         case 'relatorios': await loadRelatorios(); break;
@@ -998,6 +1004,171 @@ async function undoQuebrado(entryId, quantidade) {
 }
 
 // ═══════════════════════════════════════════
+// ABA — CONSUMO PESSOAL
+// ═══════════════════════════════════════════
+
+async function loadConsumo() {
+    showTableSkeleton('consumo-hoje-list', 5, 2);
+    
+    try {
+        const mes = currentMonth.consumo;
+        document.getElementById('consumo-month-label').textContent = formatMonthLabel(mes);
+
+        // Carregar estoque disponível
+        const estoqueRes = await api('/api/estoque');
+        document.getElementById('consumo-stock-qty').textContent =
+            estoqueRes.data.quantidade_total;
+
+        // Carregar lista de consumo
+        const res = await api(`/api/consumo?mes=${mes}`);
+
+        if (res.data.length === 0) {
+            document.getElementById('consumo-hoje-list').innerHTML =
+                '<tr><td colspan="5" class="empty-state">Nenhum registro de consumo hoje</td></tr>';
+            document.getElementById('consumo-anteriores-container').innerHTML =
+                '<div class="empty-state" style="padding: 2rem;">Nenhum registro anterior neste mês</div>';
+            document.getElementById('consumo-hoje-total').textContent = '0 ovos';
+            document.getElementById('consumo-mes-total').textContent = '0 ovos';
+            return;
+        }
+
+        // Agrupar consumo por data
+        const hoje = new Date().toISOString().split('T')[0];
+        const consumoPorDia = {};
+        let totalMes = 0;
+
+        res.data.forEach(consumo => {
+            const dataConsumo = consumo.data.split('T')[0];
+            if (!consumoPorDia[dataConsumo]) {
+                consumoPorDia[dataConsumo] = [];
+            }
+            consumoPorDia[dataConsumo].push(consumo);
+            totalMes += consumo.quantidade;
+        });
+
+        // Renderizar consumo de hoje
+        const consumoHoje = consumoPorDia[hoje] || [];
+        renderConsumoHoje(consumoHoje);
+
+        // Renderizar consumo dos dias anteriores
+        renderConsumoAnteriores(consumoPorDia, hoje);
+
+        // Atualizar total do mês
+        document.getElementById('consumo-mes-total').textContent = `${totalMes} ovos`;
+
+    } catch (e) {
+        console.error('Erro ao carregar consumo:', e);
+    }
+}
+
+function renderConsumoHoje(consumos) {
+    const tbody = document.getElementById('consumo-hoje-list');
+    
+    if (consumos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum registro de consumo hoje</td></tr>';
+        document.getElementById('consumo-hoje-total').textContent = '0 ovos';
+        return;
+    }
+
+    let totalHoje = 0;
+    tbody.innerHTML = consumos.map(c => {
+        totalHoje += c.quantidade;
+        const hora = new Date(c.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `
+            <tr>
+                <td>${hora}</td>
+                <td><strong>${c.quantidade}</strong> ovos</td>
+                <td>${c.observacao || '—'}</td>
+                <td><span class="user-badge">${c.usuario_nome || '—'}</span></td>
+                <td>
+                    <button class="btn-undo" onclick="undoConsumo(${c.id}, ${c.quantidade})" title="Desfazer — devolver ao estoque">
+                        <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    document.getElementById('consumo-hoje-total').textContent = `${totalHoje} ovos`;
+}
+
+function renderConsumoAnteriores(consumoPorDia, hoje) {
+    const container = document.getElementById('consumo-anteriores-container');
+    
+    // Filtrar e ordenar datas anteriores (mais recente primeiro)
+    const datasAnteriores = Object.keys(consumoPorDia)
+        .filter(data => data !== hoje)
+        .sort((a, b) => b.localeCompare(a));
+
+    if (datasAnteriores.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding: 2rem;">Nenhum registro anterior neste mês</div>';
+        return;
+    }
+
+    container.innerHTML = datasAnteriores.map(data => {
+        const consumos = consumoPorDia[data];
+        let totalDia = 0;
+        
+        const rows = consumos.map(c => {
+            totalDia += c.quantidade;
+            const hora = new Date(c.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            return `
+                <tr>
+                    <td>${hora}</td>
+                    <td><strong>${c.quantidade}</strong> ovos</td>
+                    <td>${c.observacao || '—'}</td>
+                    <td><span class="user-badge">${c.usuario_nome || '—'}</span></td>
+                    <td>
+                        <button class="btn-undo" onclick="undoConsumo(${c.id}, ${c.quantidade})" title="Desfazer — devolver ao estoque">
+                            <i class="fas fa-undo"></i> <span class="btn-undo-label">Desfazer</span>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const dataFormatada = formatDateLong(data);
+        
+        return `
+            <div class="day-section">
+                <div class="day-section-header">
+                    <span class="day-date">${dataFormatada}</span>
+                    <span class="day-total" style="background: linear-gradient(135deg, #fef3c7, #fde68a); color: #d97706;">Total: ${totalDia} ovos</span>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Quantidade</th>
+                                <th>Observação</th>
+                                <th>Usuário</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function undoConsumo(entryId, quantidade) {
+    const ok = await customConfirm('Desfazer Consumo', `Desfazer registro de ${quantidade} ovo(s) consumido(s)? Os ovos serão devolvidos ao estoque.`);
+    if (!ok) return;
+    try {
+        const res = await api(`/api/consumo/${entryId}`, { method: 'DELETE' });
+        showToast(res.message, 'success');
+        await loadConsumo();
+    } catch (e) {
+        // Toast já exibido
+    }
+}
+
+// ═══════════════════════════════════════════
 // ABA — DESPESAS
 // ═══════════════════════════════════════════
 
@@ -1498,7 +1669,43 @@ function changeMonth(section, delta) {
     if (section === 'entradas') loadEntradas();
     if (section === 'vendas') loadVendas();
     if (section === 'quebrados') loadQuebrados();
+    if (section === 'consumo') loadConsumo();
     if (section === 'despesas') loadDespesas();
+}
+
+// ═══════════════════════════════════════════
+// CONFIGURAÇÕES
+// ═══════════════════════════════════════════
+
+async function checkConsumoHabilitado() {
+    try {
+        const res = await api('/api/configuracoes/consumo-habilitado');
+        const habilitado = res.data.habilitado;
+        
+        // Mostrar ou ocultar a aba de consumo
+        const navConsumo = document.getElementById('nav-consumo');
+        if (navConsumo) {
+            navConsumo.style.display = habilitado ? '' : 'none';
+        }
+        
+        return habilitado;
+    } catch (e) {
+        console.error('Erro ao verificar consumo habilitado:', e);
+        return false;
+    }
+}
+
+async function loadAdminConfiguracoes() {
+    try {
+        const res = await api('/api/admin/configuracoes');
+        const config = res.data;
+        
+        // Atualizar checkboxes
+        document.getElementById('config-consumo-habilitado').checked = 
+            config.consumo_habilitado === '1';
+    } catch (e) {
+        console.error('Erro ao carregar configurações:', e);
+    }
 }
 
 // ═══════════════════════════════════════════
@@ -1507,6 +1714,9 @@ function changeMonth(section, delta) {
 
 async function loadAdminUsers() {
     showTableSkeleton('admin-users-list', 5, 3);
+    
+    // Carregar configurações também
+    await loadAdminConfiguracoes();
     
     try {
         const res = await api('/api/admin/usuarios');
@@ -1815,6 +2025,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             // Toast já exibido pelo api()
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    // ── Formulário: Consumo ──
+    document.getElementById('form-consumo').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="spinner"></span> Registrando...';
+            btn.disabled = true;
+
+            const quantidade = parseInt(document.getElementById('consumo-quantidade').value);
+            const observacao = document.getElementById('consumo-observacao').value.trim();
+
+            if (isNaN(quantidade) || quantidade <= 0) {
+                showToast('Quantidade deve ser um número positivo', 'error');
+                return;
+            }
+
+            const res = await api('/api/consumo', {
+                method: 'POST',
+                body: JSON.stringify({ quantidade, observacao })
+            });
+
+            showToast(res.message, 'success');
+            e.target.reset();
+            await loadConsumo();
+
+        } catch (err) {
+            // Toast já exibido pelo api()
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    // ── Formulário: Configurações (Admin) ──
+    document.getElementById('form-configuracoes').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="spinner"></span> Salvando...';
+            btn.disabled = true;
+
+            const consumoHabilitado = document.getElementById('config-consumo-habilitado').checked;
+
+            const res = await api('/api/admin/configuracoes', {
+                method: 'PUT',
+                body: JSON.stringify({ consumo_habilitado: consumoHabilitado })
+            });
+
+            showToast(res.message, 'success');
+            
+            // Atualizar visibilidade da aba de consumo
+            await checkConsumoHabilitado();
+
+        } catch (err) {
+            // Toast já exibido
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;
