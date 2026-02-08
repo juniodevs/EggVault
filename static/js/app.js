@@ -8,9 +8,31 @@ const currentMonth = {
 };
 const charts = {};
 
-// ═══════════════════════════════════════════
-// AUTENTICAÇÃO
-// ═══════════════════════════════════════════
+function showSkeleton(elementId) {
+    const el = document.getElementById(elementId);
+    if (el) el.style.display = '';
+}
+
+function hideSkeleton(elementId) {
+    const el = document.getElementById(elementId);
+    if (el) el.style.display = 'none';
+}
+
+function showTableSkeleton(tbodyId, cols = 5, rows = 3) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    
+    let html = '';
+    for (let i = 0; i < rows; i++) {
+        html += '<tr class="skeleton-row"><td colspan="' + cols + '">';
+        html += '<div class="skeleton-table-row">';
+        for (let j = 0; j < cols; j++) {
+            html += '<div class="skeleton skeleton-table-cell"></div>';
+        }
+        html += '</div></td></tr>';
+    }
+    tbody.innerHTML = html;
+}
 
 let authToken = localStorage.getItem('auth_token') || '';
 let currentUser = null;
@@ -114,7 +136,7 @@ async function doLogout() {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-    } catch { /* ignora */ }
+    } catch {}
     clearToken();
     showLogin();
     showToast('Você saiu do sistema', 'info');
@@ -138,7 +160,7 @@ function showChangePassword() {
     document.getElementById('nova-senha').value = '';
     document.getElementById('confirmar-senha').value = '';
     document.getElementById('senha-atual').focus();
-    // Fechar sidebar mobile
+
     document.getElementById('sidebar').classList.remove('open');
 }
 
@@ -157,13 +179,8 @@ async function doChangePassword(senhaAtual, novaSenha) {
         clearToken();
         showLogin();
     } catch {
-        // Toast já exibido pelo api()
     }
 }
-
-// ═══════════════════════════════════════════
-// EXPORTAÇÃO (PDF / Excel)
-// ═══════════════════════════════════════════
 
 function getReportMonth() {
     const month = document.getElementById('report-month')?.value;
@@ -205,10 +222,6 @@ function exportExcelAnual() {
     showToast(`Baixando Excel anual de ${ano}...`, 'info');
 }
 
-// ═══════════════════════════════════════════
-// FUNÇÕES UTILITÁRIAS
-// ═══════════════════════════════════════════
-
 function getCurrentMonth() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -240,10 +253,6 @@ function formatMonthLabel(monthStr) {
     return `${months[parseInt(month) - 1]} ${year}`;
 }
 
-// ═══════════════════════════════════════════
-// API WRAPPER
-// ═══════════════════════════════════════════
-
 async function api(endpoint, options = {}) {
     try {
         const headers = { 'Content-Type': 'application/json' };
@@ -274,10 +283,6 @@ async function api(endpoint, options = {}) {
         throw error;
     }
 }
-
-// ═══════════════════════════════════════════
-// NOTIFICAÇÕES TOAST
-// ═══════════════════════════════════════════
 
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
@@ -411,6 +416,10 @@ async function loadTabData(tabName) {
 // ═══════════════════════════════════════════
 
 async function loadEstoque() {
+    // Show skeleton
+    const statsGrid = document.getElementById('stats-grid-estoque');
+    if (statsGrid) statsGrid.style.opacity = '0.5';
+    
     try {
         const [estoqueRes, relatorioRes, precoRes] = await Promise.all([
             api('/api/estoque'),
@@ -460,8 +469,12 @@ async function loadEstoque() {
         document.getElementById('last-update').textContent =
             `Última atualização: ${formatDate(estoque.ultima_atualizacao)}`;
 
+        // Hide skeleton
+        if (statsGrid) statsGrid.style.opacity = '1';
+
     } catch (e) {
         console.error('Erro ao carregar estoque:', e);
+        if (statsGrid) statsGrid.style.opacity = '1';
     }
 }
 
@@ -470,12 +483,14 @@ async function loadEstoque() {
 // ═══════════════════════════════════════════
 
 async function loadEntradas() {
+    const tbody = document.getElementById('entradas-list');
+    showTableSkeleton('entradas-list', 5, 4);
+    
     try {
         const mes = currentMonth.entradas;
         document.getElementById('entradas-month-label').textContent = formatMonthLabel(mes);
 
         const res = await api(`/api/entradas?mes=${mes}`);
-        const tbody = document.getElementById('entradas-list');
 
         if (res.data.length === 0) {
             tbody.innerHTML =
@@ -507,6 +522,8 @@ async function loadEntradas() {
 // ═══════════════════════════════════════════
 
 async function loadVendas() {
+    showTableSkeleton('vendas-list', 6, 4);
+    
     try {
         const mes = currentMonth.vendas;
         document.getElementById('vendas-month-label').textContent = formatMonthLabel(mes);
@@ -567,6 +584,8 @@ function updateVendaTotal() {
 // ═══════════════════════════════════════════
 
 async function loadQuebrados() {
+    showTableSkeleton('quebrados-list', 5, 4);
+    
     try {
         const mes = currentMonth.quebrados;
         document.getElementById('quebrados-month-label').textContent = formatMonthLabel(mes);
@@ -626,12 +645,14 @@ async function undoQuebrado(entryId, quantidade) {
 // ═══════════════════════════════════════════
 
 async function loadDespesas() {
+    const tbody = document.getElementById('despesas-list');
+    showTableSkeleton('despesas-list', 5, 4);
+    
     try {
         const mes = currentMonth.despesas;
         document.getElementById('despesas-month-label').textContent = formatMonthLabel(mes);
 
         const res = await api(`/api/despesas?mes=${mes}`);
-        const tbody = document.getElementById('despesas-list');
 
         // Calcular total do mês
         const totalMes = res.data.reduce((sum, d) => sum + (d.valor || 0), 0);
@@ -703,6 +724,10 @@ async function undoEntrada(entryId, quantidade) {
 // ═══════════════════════════════════════════
 
 async function loadPrecos() {
+    showTableSkeleton('precos-list', 3, 3);
+    const priceDisplay = document.getElementById('current-price');
+    if (priceDisplay) priceDisplay.textContent = '...';
+    
     try {
         const [ativoRes, historicoRes] = await Promise.all([
             api('/api/precos/ativo'),
@@ -781,6 +806,10 @@ function loadReportFilters() {
 }
 
 async function loadReport() {
+    // Show loading on stat cards
+    const reportStats = document.querySelectorAll('#tab-relatorios .stat-value');
+    reportStats.forEach(el => el.textContent = '...');
+    
     try {
         const month = document.getElementById('report-month').value;
         const year = document.getElementById('report-year').value;
@@ -822,6 +851,10 @@ async function loadReport() {
 // ═══════════════════════════════════════════
 
 function updateCharts(data) {
+    // Add loading overlay to charts
+    const chartsGrid = document.querySelector('.charts-grid');
+    if (chartsGrid) chartsGrid.style.opacity = '0.6';
+    
     const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
                          'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -982,6 +1015,9 @@ function updateCharts(data) {
             }
         }
     );
+    
+    // Remove loading overlay
+    if (chartsGrid) chartsGrid.style.opacity = '1';
 }
 
 // ═══════════════════════════════════════════
@@ -1009,6 +1045,8 @@ function changeMonth(section, delta) {
 // ═══════════════════════════════════════════
 
 async function loadAdminUsers() {
+    showTableSkeleton('admin-users-list', 5, 3);
+    
     try {
         const res = await api('/api/admin/usuarios');
         const tbody = document.getElementById('admin-users-list');

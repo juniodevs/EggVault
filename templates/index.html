@@ -185,15 +185,12 @@
         </div>
     </nav>
 
-    <!-- ═══════════ BOTÃO MOBILE ═══════════ -->
     <button class="mobile-menu-btn" id="mobile-menu-btn">
         <i class="fas fa-bars"></i>
     </button>
 
-    <!-- ═══════════════════════════ CONTEÚDO PRINCIPAL ═══════════════════════════ -->
     <main class="main-content">
 
-        <!-- ══════════ ABA: ESTOQUE ══════════ -->
         <section id="tab-estoque" class="tab-content active">
             <div class="page-header">
                 <h1><i class="fas fa-warehouse"></i> Estoque</h1>
@@ -205,7 +202,7 @@
                     <div class="stock-icon">🥚</div>
                     <div class="stock-info">
                         <span class="stock-label">Estoque Atual</span>
-                        <span class="stock-value" id="stock-quantity">0</span>
+                        <span class="stock-value" id="stock-quantity">...</span>
                         <span class="stock-unit">unidades</span>
                     </div>
                     <div class="stock-indicator" id="stock-indicator">
@@ -214,46 +211,46 @@
                 </div>
             </div>
 
-            <div class="stats-grid">
+            <div class="stats-grid" id="stats-grid-estoque">
                 <div class="stat-card">
                     <i class="fas fa-arrow-circle-down stat-icon entrada"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-entradas-mes">0</span>
+                        <span class="stat-value" id="stat-entradas-mes">...</span>
                         <span class="stat-label">Entradas este mês</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-shopping-cart stat-icon saida"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-saidas-mes">0</span>
+                        <span class="stat-value" id="stat-saidas-mes">...</span>
                         <span class="stat-label">Saídas este mês</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-heart-crack stat-icon quebrado"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-quebrados-mes">0</span>
+                        <span class="stat-value" id="stat-quebrados-mes">...</span>
                         <span class="stat-label">Quebrados este mês</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-dollar-sign stat-icon faturamento"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-faturamento-mes">R$ 0,00</span>
+                        <span class="stat-value" id="stat-faturamento-mes">...</span>
                         <span class="stat-label">Faturamento este mês</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-file-invoice-dollar stat-icon despesa"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-despesas-mes">R$ 0,00</span>
+                        <span class="stat-value" id="stat-despesas-mes">...</span>
                         <span class="stat-label">Despesas este mês</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-tag stat-icon preco"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="stat-preco-atual">R$ 0,00</span>
+                        <span class="stat-value" id="stat-preco-atual">...</span>
                         <span class="stat-label">Preço atual / ovo</span>
                     </div>
                 </div>
@@ -513,7 +510,7 @@
                     <h3><i class="fas fa-edit"></i> Definir Preço</h3>
                     <div class="current-price-display">
                         <span class="price-label">Preço Atual</span>
-                        <span class="price-value" id="current-price">R$ 0,00</span>
+                        <span class="price-value" id="current-price">...</span>
                     </div>
                     <form id="form-preco">
                         <div class="form-group">
@@ -582,49 +579,49 @@
                 <div class="stat-card">
                     <i class="fas fa-arrow-circle-down stat-icon entrada"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="report-entradas">0</span>
+                        <span class="stat-value" id="report-entradas">...</span>
                         <span class="stat-label">Total Entradas</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-shopping-cart stat-icon saida"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="report-saidas">0</span>
+                        <span class="stat-value" id="report-saidas">...</span>
                         <span class="stat-label">Total Vendido</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-heart-crack stat-icon quebrado"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="report-quebrados">0</span>
+                        <span class="stat-value" id="report-quebrados">...</span>
                         <span class="stat-label">Total Quebrados</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-dollar-sign stat-icon faturamento"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="report-faturamento">R$ 0,00</span>
+                        <span class="stat-value" id="report-faturamento">...</span>
                         <span class="stat-label">Total Faturado</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-file-invoice-dollar stat-icon despesa"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="report-despesas">R$ 0,00</span>
+                        <span class="stat-value" id="report-despesas">...</span>
                         <span class="stat-label">Total Despesas</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-coins stat-icon lucro"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="report-lucro">R$ 0,00</span>
+                        <span class="stat-value" id="report-lucro">...</span>
                         <span class="stat-label">Lucro Líquido</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-balance-scale stat-icon preco"></i>
                     <div class="stat-info">
-                        <span class="stat-value" id="report-saldo">0</span>
+                        <span class="stat-value" id="report-saldo">...</span>
                         <span class="stat-label">Saldo do Mês (ovos)</span>
                     </div>
                 </div>
