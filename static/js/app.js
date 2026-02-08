@@ -1948,6 +1948,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const quantidade = parseInt(document.getElementById('venda-quantidade').value);
             const preco_unitario = parseDecimalInput(document.getElementById('venda-preco').value);
+            const valor_total = parseDecimalInput(document.getElementById('venda-total').value);
 
             if (isNaN(quantidade) || quantidade <= 0) {
                 showToast('Quantidade deve ser um número positivo', 'error');
@@ -1958,9 +1959,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Enviar valor_total se o usuário editou o campo total
+            const payload = { quantidade, preco_unitario };
+            if (lastEditedField === 'total' && valor_total > 0) {
+                payload.valor_total = valor_total;
+            }
+
             const res = await api('/api/saidas', {
                 method: 'POST',
-                body: JSON.stringify({ quantidade, preco_unitario })
+                body: JSON.stringify(payload)
             });
 
             showToast(res.message, 'success');
