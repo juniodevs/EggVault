@@ -9,6 +9,32 @@ const currentMonth = {
 };
 const charts = {};
 
+const CACHE_TTL = 30000; // 30 segundos
+const tabCache = {};
+
+function isCacheValid(tabName) {
+    const monthKey = currentMonth[tabName] || '';
+    const entry = tabCache[tabName + ':' + monthKey];
+    return entry && (Date.now() - entry.timestamp < CACHE_TTL);
+}
+
+function markCacheLoaded(tabName) {
+    const monthKey = currentMonth[tabName] || '';
+    tabCache[tabName + ':' + monthKey] = { timestamp: Date.now() };
+}
+
+function invalidateCache(...tabNames) {
+    if (tabNames.length === 0) {
+        Object.keys(tabCache).forEach(k => delete tabCache[k]);
+    } else {
+        tabNames.forEach(tab => {
+            Object.keys(tabCache).forEach(k => {
+                if (k.startsWith(tab + ':')) delete tabCache[k];
+            });
+        });
+    }
+}
+
 function showSkeleton(elementId) {
     const el = document.getElementById(elementId);
     if (el) el.style.display = '';
@@ -403,7 +429,9 @@ function switchTab(tabName) {
     document.getElementById('sidebar').classList.remove('open');
 }
 
-async function loadTabData(tabName) {
+async function loadTabData(tabName, forceRefresh = false) {
+    if (!forceRefresh && isCacheValid(tabName)) return;
+    
     switch (tabName) {
         case 'estoque':    await loadEstoque(); break;
         case 'entradas':   await loadEntradas(); break;
@@ -415,11 +443,9 @@ async function loadTabData(tabName) {
         case 'relatorios': await loadRelatorios(); break;
         case 'admin':      await loadAdminUsers(); break;
     }
+    
+    markCacheLoaded(tabName);
 }
-
-// ═══════════════════════════════════════════
-// ABA — ESTOQUE (Dashboard)
-// ═══════════════════════════════════════════
 
 async function loadEstoque() {
     // Show skeleton
@@ -997,15 +1023,13 @@ async function undoQuebrado(entryId, quantidade) {
     try {
         const res = await api(`/api/quebrados/${entryId}`, { method: 'DELETE' });
         showToast(res.message, 'success');
+        invalidateCache('quebrados', 'estoque', 'relatorios');
         await loadQuebrados();
+        markCacheLoaded('quebrados');
     } catch (e) {
         // Toast já exibido
     }
 }
-
-// ═══════════════════════════════════════════
-// ABA — CONSUMO PESSOAL
-// ═══════════════════════════════════════════
 
 async function loadConsumo() {
     showTableSkeleton('consumo-hoje-list', 5, 2);
@@ -1162,15 +1186,13 @@ async function undoConsumo(entryId, quantidade) {
     try {
         const res = await api(`/api/consumo/${entryId}`, { method: 'DELETE' });
         showToast(res.message, 'success');
+        invalidateCache('consumo', 'estoque', 'relatorios');
         await loadConsumo();
+        markCacheLoaded('consumo');
     } catch (e) {
         // Toast já exibido
     }
 }
-
-// ═══════════════════════════════════════════
-// ABA — DESPESAS
-// ═══════════════════════════════════════════
 
 async function loadDespesas() {
     showTableSkeleton('despesas-hoje-list', 5, 2);
@@ -1321,9 +1343,10 @@ async function undoDespesa(entryId, valor) {
     try {
         const res = await api(`/api/despesas/${entryId}`, { method: 'DELETE' });
         showToast(res.message, 'success');
+        invalidateCache('despesas', 'estoque', 'relatorios');
         await loadDespesas();
+        markCacheLoaded('despesas');
     } catch (e) {
-        // Toast já exibido
     }
 }
 
@@ -1333,7 +1356,9 @@ async function undoVenda(saleId, quantidade) {
     try {
         const res = await api(`/api/saidas/${saleId}`, { method: 'DELETE' });
         showToast(res.message, 'success');
+        invalidateCache('vendas', 'estoque', 'relatorios');
         await loadVendas();
+        markCacheLoaded('vendas');
     } catch (e) {
         // Toast já exibido
     }
@@ -1345,15 +1370,12 @@ async function undoEntrada(entryId, quantidade) {
     try {
         const res = await api(`/api/entradas/${entryId}`, { method: 'DELETE' });
         showToast(res.message, 'success');
+        invalidateCache('entradas', 'estoque', 'relatorios');
         await loadEntradas();
+        markCacheLoaded('entradas');
     } catch (e) {
-        // Toast já exibido
     }
 }
-
-// ═══════════════════════════════════════════
-// ABA — PREÇOS
-// ═══════════════════════════════════════════
 
 async function loadPrecos() {
     showTableSkeleton('precos-list', 3, 3);
@@ -1926,10 +1948,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showToast(res.message, 'success');
             e.target.reset();
+            invalidateCache('entradas', 'estoque', 'relatorios');
             await loadEntradas();
+            markCacheLoaded('entradas');
 
         } catch (err) {
-            // Toast já exibido pelo api()
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;
@@ -1975,7 +1998,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('venda-preco').value = '';
             document.getElementById('venda-total').value = '';
             lastEditedField = null;
+            invalidateCache('vendas', 'estoque', 'relatorios');
             await loadVendas();
+            markCacheLoaded('vendas');
 
         } catch (err) {
             // Toast já exibido
@@ -2028,7 +2053,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showToast(res.message, 'success');
             e.target.reset();
+            invalidateCache('quebrados', 'estoque', 'relatorios');
             await loadQuebrados();
+            markCacheLoaded('quebrados');
 
         } catch (err) {
             // Toast já exibido pelo api()
@@ -2063,7 +2090,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showToast(res.message, 'success');
             e.target.reset();
+            invalidateCache('consumo', 'estoque', 'relatorios');
             await loadConsumo();
+            markCacheLoaded('consumo');
 
         } catch (err) {
             // Toast já exibido pelo api()
@@ -2132,7 +2161,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showToast(res.message, 'success');
             e.target.reset();
+            invalidateCache('despesas', 'estoque', 'relatorios');
             await loadDespesas();
+            markCacheLoaded('despesas');
 
         } catch (err) {
             // Toast já exibido pelo api()
@@ -2166,7 +2197,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showToast(res.message, 'success');
             e.target.reset();
+            invalidateCache('precos', 'estoque', 'vendas');
             await loadPrecos();
+            markCacheLoaded('precos');
 
             // Atualizar preço no formulário de vendas
             document.getElementById('venda-preco').value = preco_unitario;
