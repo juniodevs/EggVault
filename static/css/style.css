@@ -82,11 +82,34 @@ body {
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
+.sidebar-brand {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
 .sidebar-header h2 {
     font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     white-space: nowrap;
+    line-height: 1.3;
+}
+
+.farm-name {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+    line-height: 1.3;
+    display: none;
+}
+
+.farm-name.visible {
+    display: block;
 }
 
 .nav-links {
@@ -1930,5 +1953,198 @@ tbody.loading {
     }
     .admin-config-card form button[type="submit"] {
         grid-column: 1 / -1;
+    }
+}
+
+.modal-changelog {
+    max-width: 800px;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.btn-close-changelog {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    z-index: 1;
+}
+
+.btn-close-changelog:hover {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+    transform: rotate(90deg);
+}
+
+.changelog-header {
+    text-align: center;
+    padding-bottom: 24px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 24px;
+}
+
+.changelog-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 12px;
+    animation: bounce 1s ease-in-out;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.changelog-header h2 {
+    color: var(--primary);
+    margin: 0 0 8px;
+    font-size: 28px;
+}
+
+.changelog-version {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+#changelog-current-version {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.changelog-content {
+    padding: 0 4px;
+}
+
+.changelog-loading {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text-secondary);
+}
+
+.changelog-loading .spinner {
+    margin: 0 auto 16px;
+}
+
+.version-block {
+    margin-bottom: 32px;
+    padding: 20px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    border-left: 4px solid var(--primary);
+}
+
+.version-block:last-child {
+    margin-bottom: 0;
+}
+
+.version-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.version-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.version-date {
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--surface);
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+.version-section {
+    margin-bottom: 16px;
+}
+
+.version-section:last-child {
+    margin-bottom: 0;
+}
+
+.version-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.version-section h4 i {
+    width: 16px;
+}
+
+.version-section.features h4 { color: var(--success); }
+.version-section.improvements h4 { color: var(--primary); }
+.version-section.fixes h4 { color: var(--danger); }
+
+.version-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.version-list li {
+    padding: 8px 0 8px 24px;
+    position: relative;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+.version-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 14px;
+    width: 8px;
+    height: 8px;
+    background: var(--primary);
+    border-radius: 50%;
+}
+
+.version-section.features .version-list li::before { background: var(--success); }
+.version-section.improvements .version-list li::before { background: var(--primary); }
+.version-section.fixes .version-list li::before { background: var(--danger); }
+
+@media (max-width: 640px) {
+    .modal-changelog {
+        max-height: 90vh;
+        margin: 20px;
+    }
+
+    .changelog-header h2 {
+        font-size: 24px;
+    }
+
+    .version-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .version-block {
+        padding: 16px;
     }
 }

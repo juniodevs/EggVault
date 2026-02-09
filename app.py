@@ -16,6 +16,7 @@ from services.consumo_service import ConsumoService
 from services.despesa_service import DespesaService
 from services.auth_service import AuthService
 from services.export_service import ExportService
+from services.version_service import VersionService
 from datetime import datetime
 import os
 import re
@@ -852,6 +853,14 @@ def export_excel_anual():
         )
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
+
+
+@app.route('/api/version', methods=['GET'])
+def get_version():
+    try:
+        return jsonify(VersionService.get_changelog())
     except Exception as e:
         return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 

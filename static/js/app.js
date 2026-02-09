@@ -100,12 +100,11 @@ async function checkAuth() {
             hideLogin();
             currentUser = data.data;
             document.getElementById('sidebar-username').textContent = data.data.nome || data.data.username;
-            // Mostrar aba admin se for administrador
             const navAdmin = document.getElementById('nav-admin');
             if (navAdmin) navAdmin.style.display = data.data.is_admin ? '' : 'none';
             await loadConfigGerais();
-            // Verificar se consumo está habilitado
             await checkConsumoHabilitado();
+            setTimeout(() => checkForUpdates(), 500);
             return true;
         } else {
             clearToken();
@@ -142,13 +141,12 @@ async function doLogin(username, password) {
             currentUser = data.data.usuario;
             document.getElementById('sidebar-username').textContent =
                 data.data.usuario.nome || data.data.usuario.username;
-            // Mostrar aba admin se for administrador
             const navAdmin = document.getElementById('nav-admin');
             if (navAdmin) navAdmin.style.display = data.data.usuario.is_admin ? '' : 'none';
-            // Verificar se consumo está habilitado
             await checkConsumoHabilitado();
             loadEstoque();
             showToast(`Bem-vindo, ${data.data.usuario.nome || data.data.usuario.username}!`, 'success');
+            setTimeout(() => checkForUpdates(), 1000);
         } else {
             errorText.textContent = data.error || 'Credenciais inválidas';
             errorDiv.style.display = 'flex';
@@ -1769,10 +1767,18 @@ async function loadConfigGerais() {
         window._appConfig = res.data;
 
         // Atualizar título da fazenda na sidebar / header
-        const nome = res.data.nome_fazenda || 'EggVault';
-        const titleEl = document.querySelector('.sidebar-header h2, .sidebar-header span');
-        if (titleEl) titleEl.textContent = nome;
-        document.title = `🥚 ${nome} — Gerenciamento de Ovos`;
+        const nome = res.data.nome_fazenda || '';
+        const farmEl = document.getElementById('farm-name-display');
+        if (farmEl) {
+            if (nome && nome !== 'EggVault') {
+                farmEl.textContent = nome;
+                farmEl.classList.add('visible');
+            } else {
+                farmEl.textContent = '';
+                farmEl.classList.remove('visible');
+            }
+        }
+        document.title = `🥚 ${nome || 'EggVault'} — Gerenciamento de Ovos`;
     } catch (e) {
         console.error('Erro ao carregar config gerais:', e);
         window._appConfig = {};
@@ -1858,6 +1864,108 @@ async function adminDeleteUser(userId, username) {
 
 function adminResetPassword(userId, username) {
     showResetPassword(userId, username);
+}
+
+async function checkForUpdates() {
+    try {
+        const res = await fetch('/api/version');
+        const data = await res.json();
+        
+        if (data.success && data.currentVersion) {
+            const lastSeenVersion = localStorage.getItem('last_seen_version');
+            
+            if (lastSeenVersion !== data.currentVersion) {
+                showChangelog(data);
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao verificar atualizações:', error);
+    }
+}
+
+function showChangelog(data) {
+    const modal = document.getElementById('modal-changelog');
+    const content = document.getElementById('changelog-content');
+    const versionSpan = document.getElementById('changelog-current-version');
+    
+    versionSpan.textContent = data.currentVersion;
+    
+    let html = '';
+    
+    if (data.versions && data.versions.length > 0) {
+        data.versions.forEach(version => {
+            html += '<div class="version-block">';
+            html += '<div class="version-header">';
+            html += `<span class="version-title">${version.title || 'Versão ' + version.version}</span>`;
+            html += `<span class="version-date">${formatDate(version.date)}</span>`;
+            html += '</div>';
+            
+            if (version.features && version.features.length > 0) {
+                html += '<div class="version-section features">';
+                html += '<h4><i class="fas fa-star"></i> Novidades</h4>';
+                html += '<ul class="version-list">';
+                version.features.forEach(item => {
+                    html += `<li>${item}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            if (version.improvements && version.improvements.length > 0) {
+                html += '<div class="version-section improvements">';
+                html += '<h4><i class="fas fa-arrow-up"></i> Melhorias</h4>';
+                html += '<ul class="version-list">';
+                version.improvements.forEach(item => {
+                    html += `<li>${item}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            if (version.fixes && version.fixes.length > 0) {
+                html += '<div class="version-section fixes">';
+                html += '<h4><i class="fas fa-bug"></i> Correções</h4>';
+                html += '<ul class="version-list">';
+                version.fixes.forEach(item => {
+                    html += `<li>${item}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            html += '</div>';
+        });
+    } else {
+        html = '<div class="empty-state" style="padding: 2rem;">Nenhuma atualização disponível</div>';
+    }
+    
+    content.innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+function closeChangelog() {
+    const modal = document.getElementById('modal-changelog');
+    const versionSpan = document.getElementById('changelog-current-version');
+    const currentVersion = versionSpan.textContent;
+    
+    if (currentVersion && currentVersion !== '—') {
+        localStorage.setItem('last_seen_version', currentVersion);
+    }
+    
+    modal.style.display = 'none';
+}
+
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('modal-changelog');
+    if (e.target === modal) {
+        closeChangelog();
+    }
+});
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+    });
 }
 
 // ═══════════════════════════════════════════

@@ -1,0 +1,21 @@
+{
+    "currentVersion": "1.0.0",
+    "versions": [
+        {
+            "version": "1.0.0",
+            "date": "2026-02-09",
+            "title": "Versão Inicial - EggVault",
+            "features": [
+                "Sistema completo de gerenciamento de estoque de ovos",
+                "Registro de entradas, saídas e quebrados",
+                "Controle de preços e despesas",
+                "Relatórios mensais com gráficos interativos",
+                "Exportação para Excel e PDF",
+                "Sistema de autenticação e múltiplos usuários",
+                "Painel administrativo completo"
+            ],
+            "improvements": [],
+            "fixes": []
+        }
+    ]
+}

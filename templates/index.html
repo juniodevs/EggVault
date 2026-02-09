@@ -123,11 +123,33 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-changelog" style="display:none;">
+        <div class="modal-card modal-changelog">
+            <button class="btn-close-changelog" onclick="closeChangelog()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="changelog-header">
+                <span class="changelog-icon">🎉</span>
+                <h2>Novidades & Atualizações</h2>
+                <p class="changelog-version">Versão <span id="changelog-current-version">—</span></p>
+            </div>
+            <div class="changelog-content" id="changelog-content">
+                <div class="changelog-loading">
+                    <div class="spinner"></div>
+                    <p>Carregando atualizações...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <span class="logo">🥚</span>
-            <h2>EggVault</h2>
+            <div class="sidebar-brand">
+                <h2>EggVault</h2>
+                <span class="farm-name" id="farm-name-display"></span>
+            </div>
         </div>
 
         <ul class="nav-links">
