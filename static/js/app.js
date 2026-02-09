@@ -1769,10 +1769,18 @@ async function loadConfigGerais() {
         window._appConfig = res.data;
 
         // Atualizar título da fazenda na sidebar / header
-        const nome = res.data.nome_fazenda || 'EggVault';
-        const titleEl = document.querySelector('.sidebar-header h2, .sidebar-header span');
-        if (titleEl) titleEl.textContent = nome;
-        document.title = `🥚 ${nome} — Gerenciamento de Ovos`;
+        const nome = res.data.nome_fazenda || '';
+        const farmEl = document.getElementById('farm-name-display');
+        if (farmEl) {
+            if (nome && nome !== 'EggVault') {
+                farmEl.textContent = nome;
+                farmEl.classList.add('visible');
+            } else {
+                farmEl.textContent = '';
+                farmEl.classList.remove('visible');
+            }
+        }
+        document.title = `🥚 ${nome || 'EggVault'} — Gerenciamento de Ovos`;
     } catch (e) {
         console.error('Erro ao carregar config gerais:', e);
         window._appConfig = {};

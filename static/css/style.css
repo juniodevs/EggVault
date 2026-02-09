@@ -82,11 +82,34 @@ body {
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
+.sidebar-brand {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
 .sidebar-header h2 {
     font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     white-space: nowrap;
+    line-height: 1.3;
+}
+
+.farm-name {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+    line-height: 1.3;
+    display: none;
+}
+
+.farm-name.visible {
+    display: block;
 }
 
 .nav-links {
