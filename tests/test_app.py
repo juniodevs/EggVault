@@ -9,8 +9,8 @@ import sys
 import os
 import tempfile
 
-# Usar arquivo temporário para o banco de testes
-TEST_DB_PATH = os.path.join(tempfile.gettempdir(), 'ovos_test.db')
+_worker = os.environ.get('PYTEST_XDIST_WORKER', '')
+TEST_DB_PATH = os.path.join(tempfile.gettempdir(), f'ovos_test_{_worker}.db')
 os.environ['DATABASE_URL'] = ''   # Forçar SQLite nos testes
 os.environ['OVOS_DB_PATH'] = TEST_DB_PATH
 
@@ -37,6 +37,8 @@ class BaseTestCase(unittest.TestCase):
     def setUp(self):
         """Configura o app de teste e inicializa o banco."""
         _cleanup_db()
+        # Atualiza o env var para o worker correto antes de cada teste
+        os.environ['OVOS_DB_PATH'] = TEST_DB_PATH
         app.config['TESTING'] = True
         self.client = app.test_client()
         init_db()

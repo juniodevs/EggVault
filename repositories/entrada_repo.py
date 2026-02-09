@@ -52,17 +52,26 @@ class EntradaRepository:
         return result['total']
 
     @staticmethod
-    def delete(entry_id):
-        """Remove um registro de entrada pelo ID."""
+    def get_by_id(entry_id):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT quantidade FROM entradas WHERE id = ?", (entry_id,))
+        cursor.execute("SELECT * FROM entradas WHERE id = ?", (entry_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    @staticmethod
+    def delete(entry_id):
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT quantidade, mes_referencia FROM entradas WHERE id = ?", (entry_id,))
         row = cursor.fetchone()
         if row is None:
             conn.close()
             raise ValueError("Entrada não encontrada")
         quantidade = row['quantidade']
+        mes_referencia = row['mes_referencia']
         cursor.execute("DELETE FROM entradas WHERE id = ?", (entry_id,))
         conn.commit()
         conn.close()
-        return quantidade
+        return quantidade, mes_referencia

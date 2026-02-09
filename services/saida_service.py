@@ -80,10 +80,8 @@ class SaidaService:
         Raises:
             ValueError: Se a venda não for encontrada.
         """
-        quantidade = SaidaRepository.delete(sale_id)
+        quantidade, mes_ref = SaidaRepository.delete(sale_id)
         EstoqueService.atualizar(quantidade, 'add')
-
-        mes_ref = datetime.now().strftime('%Y-%m')
         RelatorioService.atualizar_resumo(mes_ref)
 
         return quantidade

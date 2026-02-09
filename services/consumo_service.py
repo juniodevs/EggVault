@@ -11,6 +11,8 @@ class ConsumoService:
     def registrar(quantidade, observacao='', usuario_id=None, usuario_nome=''):
         if not isinstance(quantidade, int) or quantidade <= 0:
             raise ValueError("Quantidade deve ser um número inteiro positivo")
+        if observacao and len(observacao) > 500:
+            raise ValueError("Observação deve ter no máximo 500 caracteres")
 
         estoque = EstoqueService.get_estoque()
         if quantidade > estoque['quantidade_total']:
@@ -27,10 +29,8 @@ class ConsumoService:
 
     @staticmethod
     def remover(entry_id):
-        quantidade = ConsumoRepository.delete(entry_id)
+        quantidade, mes_ref = ConsumoRepository.delete(entry_id)
         EstoqueService.atualizar(quantidade, 'add')
-
-        mes_ref = datetime.now().strftime('%Y-%m')
         RelatorioService.atualizar_resumo(mes_ref)
 
         return quantidade

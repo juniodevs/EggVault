@@ -55,16 +55,16 @@ class SaidaRepository:
 
     @staticmethod
     def delete(sale_id):
-        """Remove um registro de saída pelo ID."""
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT quantidade FROM saidas WHERE id = ?", (sale_id,))
+        cursor.execute("SELECT quantidade, mes_referencia FROM saidas WHERE id = ?", (sale_id,))
         row = cursor.fetchone()
         if row is None:
             conn.close()
             raise ValueError("Venda não encontrada")
         quantidade = row['quantidade']
+        mes_referencia = row['mes_referencia']
         cursor.execute("DELETE FROM saidas WHERE id = ?", (sale_id,))
         conn.commit()
         conn.close()
-        return quantidade
+        return quantidade, mes_referencia

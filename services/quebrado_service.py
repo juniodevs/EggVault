@@ -16,7 +16,7 @@ class QuebradoService:
 
         Args:
             quantidade: Número de ovos quebrados (inteiro positivo).
-            motivo: Motivo/observação da perda.
+            motivo: Motivo/observação da perda (máx 500 caracteres).
             usuario_id: ID do usuário que registrou.
             usuario_nome: Nome do usuário que registrou.
 
@@ -28,6 +28,8 @@ class QuebradoService:
         """
         if not isinstance(quantidade, int) or quantidade <= 0:
             raise ValueError("Quantidade deve ser um número inteiro positivo")
+        if motivo and len(motivo) > 500:
+            raise ValueError("Motivo deve ter no máximo 500 caracteres")
 
         # Verificar estoque disponível
         estoque = EstoqueService.get_estoque()
@@ -57,10 +59,8 @@ class QuebradoService:
         Raises:
             ValueError: Se o registro não for encontrado.
         """
-        quantidade = QuebradoRepository.delete(entry_id)
+        quantidade, mes_ref = QuebradoRepository.delete(entry_id)
         EstoqueService.atualizar(quantidade, 'add')
-
-        mes_ref = datetime.now().strftime('%Y-%m')
         RelatorioService.atualizar_resumo(mes_ref)
 
         return quantidade
