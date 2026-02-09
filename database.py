@@ -368,26 +368,18 @@ _POSTGRES_SCHEMA = '''
     );
 '''
 
-
-# ═══════════════════════════════════════════
-# INICIALIZAÇÃO
-# ═══════════════════════════════════════════
-
 def init_db():
     """Inicializa as tabelas do banco e insere dados padrão."""
     conn = get_connection()
     cursor = conn.cursor()
 
-    # ── Criar tabelas ─────────────────────
     if USE_POSTGRES:
         cursor.executescript(_POSTGRES_SCHEMA)
     else:
         cursor.executescript(_SQLITE_SCHEMA)
 
-    # ── Commit schema creation before migrations ──
     conn.commit()
 
-    # ── Migrações (adicionar colunas novas) ──
     _migrate_columns = [
         ('entradas', 'usuario_id', 'INTEGER'),
         ('entradas', 'usuario_nome', "TEXT DEFAULT ''"),
@@ -413,9 +405,8 @@ def init_db():
                     f'ALTER TABLE {table} ADD COLUMN {col} {col_type}'
                 )
         except Exception:
-            pass  # Coluna já existe (SQLite)
+            pass
 
-    # ── Fix tipo BOOLEAN → INTEGER para coluna ativo (PostgreSQL) ──
     if USE_POSTGRES:
         try:
             cursor._cursor.execute(
@@ -437,7 +428,6 @@ def init_db():
             except Exception:
                 pass
 
-    # ── Estoque inicial ──────────────────
     cursor.execute("SELECT COUNT(*) as count FROM estoque")
     if cursor.fetchone()['count'] == 0:
         cursor.execute(
@@ -445,17 +435,17 @@ def init_db():
             (0, datetime.now().isoformat())
         )
 
-    # ── Usuário admin padrão ─────────────
     cursor.execute("SELECT COUNT(*) as count FROM usuarios")
     if cursor.fetchone()['count'] == 0:
         salt = secrets.token_hex(32)
-        password_hash = hashlib.sha256(('admin' + salt).encode()).hexdigest()
+        password_hash = hashlib.pbkdf2_hmac(
+            'sha256', 'admin'.encode(), salt.encode(), 600_000
+        ).hex()
         cursor.execute(
             "INSERT INTO usuarios (username, password_hash, salt, nome, is_admin) VALUES (?, ?, ?, ?, ?)",
             ('admin', password_hash, salt, 'Administrador', 1)
         )
     else:
-        # Garantir que o admin existente tenha is_admin=1
         cursor.execute("UPDATE usuarios SET is_admin = 1 WHERE username = 'admin' AND is_admin = 0")
 
     _default_configs = [

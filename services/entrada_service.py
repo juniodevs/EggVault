@@ -11,23 +11,10 @@ class EntradaService:
 
     @staticmethod
     def registrar(quantidade, observacao='', usuario_id=None, usuario_nome=''):
-        """
-        Registra uma nova entrada de ovos.
-
-        Args:
-            quantidade: Número de ovos (inteiro positivo).
-            observacao: Texto opcional de observação.
-            usuario_id: ID do usuário que registrou.
-            usuario_nome: Nome do usuário que registrou.
-
-        Returns:
-            ID da entrada criada.
-
-        Raises:
-            ValueError: Se a quantidade for inválida.
-        """
         if not isinstance(quantidade, int) or quantidade <= 0:
             raise ValueError("Quantidade deve ser um número inteiro positivo")
+        if observacao and len(observacao) > 500:
+            raise ValueError("Observação deve ter no máximo 500 caracteres")
 
         mes_ref = datetime.now().strftime('%Y-%m')
         entry_id = EntradaRepository.create(quantidade, observacao, mes_ref, usuario_id, usuario_nome)
@@ -38,35 +25,23 @@ class EntradaService:
 
     @staticmethod
     def remover(entry_id):
-        """
-        Remove uma entrada — subtrai ovos do estoque.
+        entrada = EntradaRepository.get_by_id(entry_id)
+        if not entrada:
+            raise ValueError("Entrada não encontrada")
 
-        Args:
-            entry_id: ID da entrada a remover.
+        quantidade = entrada['quantidade']
+        mes_ref = entrada['mes_referencia']
 
-        Returns:
-            Quantidade removida do estoque.
-
-        Raises:
-            ValueError: Se a entrada não for encontrada ou
-                        estoque insuficiente para reverter.
-        """
-        quantidade = EntradaRepository.delete(entry_id)
-
-        # Verificar se estoque suficiente para reverter
         estoque = EstoqueService.get_estoque()
         if quantidade > estoque['quantidade_total']:
-            # Re-inserir a entrada (rollback manual)
-            mes_ref = datetime.now().strftime('%Y-%m')
-            EntradaRepository.create(quantidade, '(restaurado após falha)', mes_ref)
             raise ValueError(
                 f"Não é possível desfazer: estoque ficaria negativo. "
                 f"Estoque atual: {estoque['quantidade_total']}, entrada: {quantidade}"
             )
 
+        # Seguro deletar — entrada existe e estoque suporta
+        EntradaRepository.delete(entry_id)
         EstoqueService.atualizar(quantidade, 'subtract')
-
-        mes_ref = datetime.now().strftime('%Y-%m')
         RelatorioService.atualizar_resumo(mes_ref)
 
         return quantidade

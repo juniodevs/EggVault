@@ -49,16 +49,16 @@ class ConsumoRepository:
 
     @staticmethod
     def delete(entry_id):
-        """Remove um registro de consumo pelo ID e retorna a quantidade."""
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT quantidade FROM consumo WHERE id = ?", (entry_id,))
+        cursor.execute("SELECT quantidade, mes_referencia FROM consumo WHERE id = ?", (entry_id,))
         row = cursor.fetchone()
         if row is None:
             conn.close()
             raise ValueError("Registro de consumo não encontrado")
         quantidade = row['quantidade']
+        mes_referencia = row['mes_referencia']
         cursor.execute("DELETE FROM consumo WHERE id = ?", (entry_id,))
         conn.commit()
         conn.close()
-        return quantidade
+        return quantidade, mes_referencia

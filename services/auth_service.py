@@ -1,5 +1,3 @@
-"""Serviço de autenticação — login, sessões e gerenciamento de usuários."""
-
 import hashlib
 import secrets
 from datetime import datetime, timedelta
@@ -10,23 +8,23 @@ class AuthService:
     """Lógica de autenticação com hash de senha + salt e tokens de sessão."""
 
     SESSION_DURATION_HOURS = 72  # Sessão dura 3 dias
+    PBKDF2_ITERATIONS = 600_000  # OWASP recommendation
 
     @staticmethod
     def _hash_password(password, salt):
-        """Gera hash SHA-256 da senha + salt."""
+        """Gera hash PBKDF2-SHA256 da senha + salt (600k iterações)."""
+        return hashlib.pbkdf2_hmac(
+            'sha256', password.encode(), salt.encode(),
+            AuthService.PBKDF2_ITERATIONS
+        ).hex()
+
+    @staticmethod
+    def _hash_password_legacy(password, salt):
+        """Hash SHA-256 legado — usado apenas para migração de senhas antigas."""
         return hashlib.sha256((password + salt).encode()).hexdigest()
 
     @staticmethod
     def login(username, password):
-        """
-        Autentica usuário e retorna token de sessão.
-
-        Returns:
-            dict com token e dados do usuário.
-
-        Raises:
-            ValueError: Se credenciais inválidas.
-        """
         if not username or not password:
             raise ValueError("Usuário e senha são obrigatórios")
 
@@ -43,10 +41,19 @@ class AuthService:
 
         password_hash = AuthService._hash_password(password, user['salt'])
         if password_hash != user['password_hash']:
-            conn.close()
-            raise ValueError("Usuário ou senha incorretos")
+            legacy_hash = AuthService._hash_password_legacy(password, user['salt'])
+            if legacy_hash != user['password_hash']:
+                conn.close()
+                raise ValueError("Usuário ou senha incorretos")
+            new_salt = secrets.token_hex(32)
+            new_hash = AuthService._hash_password(password, new_salt)
+            cursor.execute(
+                "UPDATE usuarios SET password_hash = ?, salt = ? WHERE id = ?",
+                (new_hash, new_salt, user['id'])
+            )
 
-        # Criar sessão
+        AuthService._limpar_sessoes_expiradas_internal(cursor)
+
         token = secrets.token_hex(32)
         expira_em = (datetime.now() + timedelta(hours=AuthService.SESSION_DURATION_HOURS)).isoformat()
 
@@ -55,7 +62,6 @@ class AuthService:
             (user['id'], token, datetime.now().isoformat(), expira_em)
         )
 
-        # Atualizar último login
         cursor.execute(
             "UPDATE usuarios SET ultimo_login = ? WHERE id = ?",
             (datetime.now().isoformat(), user['id'])
@@ -77,12 +83,6 @@ class AuthService:
 
     @staticmethod
     def validar_token(token):
-        """
-        Valida um token de sessão.
-
-        Returns:
-            dict com dados do usuário se válido, None se inválido.
-        """
         if not token:
             return None
 
@@ -109,7 +109,6 @@ class AuthService:
 
     @staticmethod
     def logout(token):
-        """Remove a sessão (logout)."""
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM sessoes WHERE token = ?", (token,))
@@ -136,11 +135,12 @@ class AuthService:
             conn.close()
             raise ValueError("Usuário não encontrado")
 
-        # Verificar senha atual
         hash_atual = AuthService._hash_password(senha_atual, user['salt'])
         if hash_atual != user['password_hash']:
-            conn.close()
-            raise ValueError("Senha atual incorreta")
+            legacy_hash = AuthService._hash_password_legacy(senha_atual, user['salt'])
+            if legacy_hash != user['password_hash']:
+                conn.close()
+                raise ValueError("Senha atual incorreta")
 
         # Gerar novo salt e hash
         novo_salt = secrets.token_hex(32)
@@ -157,9 +157,22 @@ class AuthService:
         conn.commit()
         conn.close()
 
-    # ═══════════════════════════════════════════
-    # GERENCIAMENTO DE CONTAS (Admin)
-    # ═══════════════════════════════════════════
+    @staticmethod
+    def _limpar_sessoes_expiradas_internal(cursor):
+        """Remove sessões expiradas (usa cursor existente)."""
+        try:
+            cursor.execute("DELETE FROM sessoes WHERE expira_em < ?", (datetime.now().isoformat(),))
+        except Exception:
+            pass
+
+    @staticmethod
+    def limpar_sessoes_expiradas():
+        """Remove sessões expiradas do banco."""
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM sessoes WHERE expira_em < ?", (datetime.now().isoformat(),))
+        conn.commit()
+        conn.close()
 
     @staticmethod
     def listar_usuarios():
@@ -192,17 +205,20 @@ class AuthService:
         """
         if not username or len(username.strip()) < 3:
             raise ValueError("Usuário deve ter no mínimo 3 caracteres")
+        if len(username.strip()) > 50:
+            raise ValueError("Usuário deve ter no máximo 50 caracteres")
         if not password or len(password) < 4:
             raise ValueError("Senha deve ter no mínimo 4 caracteres")
         if not nome or not nome.strip():
             raise ValueError("Nome é obrigatório")
+        if len(nome.strip()) > 100:
+            raise ValueError("Nome deve ter no máximo 100 caracteres")
 
         username = username.strip().lower()
 
         conn = get_connection()
         cursor = conn.cursor()
 
-        # Verificar se username já existe
         cursor.execute("SELECT id FROM usuarios WHERE username = ?", (username,))
         if cursor.fetchone():
             conn.close()
@@ -228,15 +244,6 @@ class AuthService:
 
     @staticmethod
     def deletar_usuario(usuario_id):
-        """
-        Remove um usuário e todas as suas sessões.
-
-        Args:
-            usuario_id: ID do usuário a remover.
-
-        Raises:
-            ValueError: Se tentar deletar o último admin ou usuário não existe.
-        """
         conn = get_connection()
         cursor = conn.cursor()
 
@@ -246,14 +253,12 @@ class AuthService:
             conn.close()
             raise ValueError("Usuário não encontrado")
 
-        # Não permitir deletar o último admin
         if user['is_admin']:
             cursor.execute("SELECT COUNT(*) as count FROM usuarios WHERE is_admin = 1")
             if cursor.fetchone()['count'] <= 1:
                 conn.close()
                 raise ValueError("Não é possível remover o último administrador")
 
-        # Remover sessões e usuário
         cursor.execute("DELETE FROM sessoes WHERE usuario_id = ?", (usuario_id,))
         cursor.execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
         conn.commit()
@@ -261,15 +266,6 @@ class AuthService:
 
     @staticmethod
     def atualizar_usuario(usuario_id, nome=None, is_admin=None, nova_senha=None):
-        """
-        Atualiza dados de um usuário (para o admin).
-
-        Args:
-            usuario_id: ID do usuário.
-            nome: Novo nome (ou None para não alterar).
-            is_admin: Novo status admin (ou None para não alterar).
-            nova_senha: Nova senha (ou None para não alterar).
-        """
         conn = get_connection()
         cursor = conn.cursor()
 
@@ -279,7 +275,6 @@ class AuthService:
             conn.close()
             raise ValueError("Usuário não encontrado")
 
-        # Se estiver removendo admin, verificar se não é o último
         if is_admin is not None and not is_admin and user['is_admin']:
             cursor.execute("SELECT COUNT(*) as count FROM usuarios WHERE is_admin = 1")
             if cursor.fetchone()['count'] <= 1:
@@ -302,7 +297,6 @@ class AuthService:
                 "UPDATE usuarios SET password_hash = ?, salt = ? WHERE id = ?",
                 (novo_hash, novo_salt, usuario_id)
             )
-            # Invalidar sessões
             cursor.execute("DELETE FROM sessoes WHERE usuario_id = ?", (usuario_id,))
 
         conn.commit()

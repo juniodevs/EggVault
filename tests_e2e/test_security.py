@@ -550,3 +550,485 @@ class TestSessionSecurity:
                 "Authorization": f"Bearer {token2}",
             },
         )
+
+class TestMesValidation:
+    """Endpoints com parâmetro ?mes= devem rejeitar formatos inválidos com 400."""
+
+    INVALID_MES = [
+        "invalid",
+        "2025",
+        "2025-13",       # mês 13 não existe
+        "2025-00",       # mês 00 não existe
+        "25-01",         # ano com 2 dígitos
+        "abcd-01",       # ano não numérico
+        "2025-1",        # mês sem zero à esquerda
+        "2025/01",       # separador errado
+        "' OR 1=1 --",   # SQL injection attempt
+    ]
+
+    VALID_MES = "2025-01"
+
+    ENDPOINTS_WITH_MES = [
+        "/api/entradas",
+        "/api/saidas",
+        "/api/quebrados",
+        "/api/consumo",
+        "/api/despesas",
+        "/api/relatorio",
+    ]
+
+    def _get_token(self, page, live_server):
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        return res.json()["data"]["token"]
+
+    @pytest.mark.parametrize("mes", INVALID_MES)
+    @pytest.mark.parametrize("endpoint", ENDPOINTS_WITH_MES)
+    def test_invalid_mes_returns_400(self, page, live_server, endpoint, mes):
+        """Formato de mês inválido deve retornar 400."""
+        token = self._get_token(page, live_server)
+        res = page.request.get(
+            f"{live_server}{endpoint}?mes={mes}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status == 400, (
+            f"{endpoint}?mes={mes} retornou {res.status}, esperado 400"
+        )
+        body = res.json()
+        assert body["success"] is False
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS_WITH_MES)
+    def test_valid_mes_accepted(self, page, live_server, endpoint):
+        """Formato de mês válido deve ser aceito (200)."""
+        token = self._get_token(page, live_server)
+        res = page.request.get(
+            f"{live_server}{endpoint}?mes={self.VALID_MES}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status == 200, (
+            f"{endpoint}?mes={self.VALID_MES} retornou {res.status}, esperado 200"
+        )
+
+    def test_export_excel_invalid_mes(self, page, live_server):
+        """GET /api/export/excel com mês inválido deve retornar 400."""
+        token = self._get_token(page, live_server)
+        res = page.request.get(
+            f"{live_server}/api/export/excel?mes=invalido",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status == 400
+
+    def test_export_pdf_invalid_mes(self, page, live_server):
+        """GET /api/export/pdf com mês inválido deve retornar 400."""
+        token = self._get_token(page, live_server)
+        res = page.request.get(
+            f"{live_server}/api/export/pdf?mes=invalido",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status == 400
+
+
+class TestAnoValidation:
+    """Endpoints com parâmetro ?ano= devem rejeitar formatos inválidos com 400."""
+
+    INVALID_ANO = [
+        "invalid",
+        "25",            # ano com 2 dígitos
+        "abcd",          # não numérico
+        "20255",         # 5 dígitos
+        "' OR 1=1 --",  # SQL injection
+    ]
+
+    def _get_token(self, page, live_server):
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        return res.json()["data"]["token"]
+
+    def test_relatorio_anual_invalid_ano(self, page, live_server):
+        """GET /api/relatorio/anual com ano inválido deve retornar 400."""
+        token = self._get_token(page, live_server)
+        for ano in self.INVALID_ANO:
+            res = page.request.get(
+                f"{live_server}/api/relatorio/anual?ano={ano}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert res.status == 400, f"ano={ano} retornou {res.status}, esperado 400"
+
+    def test_relatorio_anual_valid_ano(self, page, live_server):
+        """GET /api/relatorio/anual com ano válido deve ser aceito."""
+        token = self._get_token(page, live_server)
+        res = page.request.get(
+            f"{live_server}/api/relatorio/anual?ano=2025",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status == 200
+
+    def test_export_excel_anual_invalid_ano(self, page, live_server):
+        """GET /api/export/excel-anual com ano inválido deve retornar 400."""
+        token = self._get_token(page, live_server)
+        res = page.request.get(
+            f"{live_server}/api/export/excel-anual?ano=xx",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status == 400
+
+class TestTextFieldLimits:
+    """Campos de texto devem rejeitar valores muito longos (>500 chars)."""
+
+    LONG_TEXT = "A" * 501  # 501 caracteres, acima do limite de 500
+
+    def _get_token(self, page, live_server):
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        return res.json()["data"]["token"]
+
+    def _auth_headers(self, token):
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+
+    def test_entrada_observacao_too_long(self, page, live_server):
+        """Observação de entrada com mais de 500 chars deve ser rejeitada."""
+        token = self._get_token(page, live_server)
+        res = page.request.post(
+            f"{live_server}/api/entradas",
+            data=json.dumps({"quantidade": 1, "observacao": self.LONG_TEXT}),
+            headers=self._auth_headers(token),
+        )
+        assert res.status == 400
+        body = res.json()
+        assert body["success"] is False
+
+    def test_entrada_observacao_at_limit(self, page, live_server):
+        """Observação de entrada com exatamente 500 chars deve ser aceita."""
+        token = self._get_token(page, live_server)
+        text_at_limit = "B" * 500
+        res = page.request.post(
+            f"{live_server}/api/entradas",
+            data=json.dumps({"quantidade": 1, "observacao": text_at_limit}),
+            headers=self._auth_headers(token),
+        )
+        assert res.status == 200
+
+    def test_quebrado_motivo_too_long(self, page, live_server):
+        """Motivo de quebra com mais de 500 chars deve ser rejeitado."""
+        token = self._get_token(page, live_server)
+        page.request.post(
+            f"{live_server}/api/entradas",
+            data=json.dumps({"quantidade": 10}),
+            headers=self._auth_headers(token),
+        )
+        res = page.request.post(
+            f"{live_server}/api/quebrados",
+            data=json.dumps({"quantidade": 1, "motivo": self.LONG_TEXT}),
+            headers=self._auth_headers(token),
+        )
+        assert res.status == 400
+
+    def test_consumo_observacao_too_long(self, page, live_server):
+        """Observação de consumo com mais de 500 chars deve ser rejeitada."""
+        token = self._get_token(page, live_server)
+        page.request.post(
+            f"{live_server}/api/entradas",
+            data=json.dumps({"quantidade": 10}),
+            headers=self._auth_headers(token),
+        )
+        res = page.request.post(
+            f"{live_server}/api/consumo",
+            data=json.dumps({"quantidade": 1, "observacao": self.LONG_TEXT}),
+            headers=self._auth_headers(token),
+        )
+        assert res.status == 400
+
+    def test_despesa_descricao_too_long(self, page, live_server):
+        """Descrição de despesa com mais de 500 chars deve ser rejeitada."""
+        token = self._get_token(page, live_server)
+        res = page.request.post(
+            f"{live_server}/api/despesas",
+            data=json.dumps({
+                "descricao": self.LONG_TEXT,
+                "valor": 10.0,
+            }),
+            headers=self._auth_headers(token),
+        )
+        assert res.status == 400
+
+
+class TestUserFieldLimits:
+    """Username e nome de usuário devem respeitar limites de comprimento."""
+
+    def _get_token(self, page, live_server):
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        return res.json()["data"]["token"]
+
+    def _auth_headers(self, token):
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+
+    def test_username_too_long(self, page, live_server):
+        """Username com mais de 50 caracteres deve ser rejeitado."""
+        token = self._get_token(page, live_server)
+        res = page.request.post(
+            f"{live_server}/api/admin/usuarios",
+            data=json.dumps({
+                "username": "u" * 51,
+                "password": "1234",
+                "nome": "Long Username",
+            }),
+            headers=self._auth_headers(token),
+        )
+        assert res.status == 400
+
+    def test_nome_too_long(self, page, live_server):
+        """Nome com mais de 100 caracteres deve ser rejeitado."""
+        token = self._get_token(page, live_server)
+        res = page.request.post(
+            f"{live_server}/api/admin/usuarios",
+            data=json.dumps({
+                "username": "valid_user",
+                "password": "1234",
+                "nome": "N" * 101,
+            }),
+            headers=self._auth_headers(token),
+        )
+        assert res.status == 400
+
+class TestCookieSecureFlag:
+    """Verifica flags de segurança no cookie auth_token."""
+
+    def test_auth_cookie_has_httponly(self, page, live_server):
+        """Cookie auth_token deve ter flag HttpOnly."""
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        cookies_header = res.headers.get("set-cookie", "")
+        if "auth_token" in cookies_header:
+            assert "httponly" in cookies_header.lower(), "Cookie sem flag HttpOnly"
+
+    def test_auth_cookie_has_samesite(self, page, live_server):
+        """Cookie auth_token deve ter flag SameSite."""
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        cookies_header = res.headers.get("set-cookie", "")
+        if "auth_token" in cookies_header:
+            assert "samesite" in cookies_header.lower(), "Cookie sem flag SameSite"
+
+
+class TestErrorSanitization:
+    """Em modo de produção, erros internos não devem expor detalhes."""
+
+    def _get_token(self, page, live_server):
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        return res.json()["data"]["token"]
+
+    def test_error_messages_no_stack_trace(self, page, live_server):
+        """Mensagens de erro não devem conter stack traces ou nomes de módulos internos."""
+        token = self._get_token(page, live_server)
+        res = page.request.delete(
+            f"{live_server}/api/entradas/999999",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if res.status >= 400:
+            body = res.json()
+            error_msg = body.get("error", "")
+            assert "Traceback" not in error_msg
+            assert "File \"" not in error_msg
+            assert ".py\"" not in error_msg
+
+
+class TestPBKDF2Migration:
+    """O login com PBKDF2 deve funcionar de forma transparente."""
+
+    def _get_token(self, page, live_server):
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        return res.json()["data"]["token"]
+
+    def _auth_headers(self, token):
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+
+    def test_admin_login_works(self, page, live_server):
+        """Admin padrão consegue fazer login (hash PBKDF2)."""
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        assert res.status == 200
+        body = res.json()
+        assert body["success"] is True
+        assert "token" in body["data"]
+
+    def test_created_user_login_works(self, page, live_server):
+        """Usuário criado via API consegue fazer login (hash PBKDF2)."""
+        token = self._get_token(page, live_server)
+        page.request.post(
+            f"{live_server}/api/admin/usuarios",
+            data=json.dumps({
+                "username": "pbkdf2_test_user",
+                "password": "senha123",
+                "nome": "PBKDF2 Test",
+            }),
+            headers=self._auth_headers(token),
+        )
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "pbkdf2_test_user", "password": "senha123"}),
+            headers={"Content-Type": "application/json"},
+        )
+        assert res.status == 200
+        body = res.json()
+        assert body["success"] is True
+
+    def test_password_change_works(self, page, live_server):
+        """Alterar senha funciona com hashing PBKDF2."""
+        token = self._get_token(page, live_server)
+        page.request.post(
+            f"{live_server}/api/admin/usuarios",
+            data=json.dumps({
+                "username": "pwd_change_test",
+                "password": "old_pass",
+                "nome": "Pwd Change",
+            }),
+            headers=self._auth_headers(token),
+        )
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "pwd_change_test", "password": "old_pass"}),
+            headers={"Content-Type": "application/json"},
+        )
+        user_token = res.json()["data"]["token"]
+        res = page.request.post(
+            f"{live_server}/api/auth/alterar-senha",
+            data=json.dumps({"senha_atual": "old_pass", "nova_senha": "new_pass"}),
+            headers=self._auth_headers(user_token),
+        )
+        assert res.status == 200
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "pwd_change_test", "password": "new_pass"}),
+            headers={"Content-Type": "application/json"},
+        )
+        assert res.status == 200
+        assert res.json()["success"] is True
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "pwd_change_test", "password": "old_pass"}),
+            headers={"Content-Type": "application/json"},
+        )
+        body = res.json()
+        assert body["success"] is False
+
+
+class TestDeletionUsesOriginalMonth:
+    def _get_token(self, page, live_server):
+        res = page.request.post(
+            f"{live_server}/api/auth/login",
+            data=json.dumps({"username": "admin", "password": "admin"}),
+            headers={"Content-Type": "application/json"},
+        )
+        return res.json()["data"]["token"]
+
+    def _auth_headers(self, token):
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+
+    def test_entrada_delete_returns_success(self, page, live_server):
+        token = self._get_token(page, live_server)
+        headers = self._auth_headers(token)
+        res = page.request.post(
+            f"{live_server}/api/entradas",
+            data=json.dumps({"quantidade": 30}),
+            headers=headers,
+        )
+        assert res.status == 200
+        entry_id = res.json()["id"]
+        res = page.request.delete(
+            f"{live_server}/api/entradas/{entry_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status == 200
+        body = res.json()
+        assert body["success"] is True
+
+    def test_saida_delete_returns_success(self, page, live_server):
+        token = self._get_token(page, live_server)
+        headers = self._auth_headers(token)
+        page.request.post(
+            f"{live_server}/api/entradas",
+            data=json.dumps({"quantidade": 50}),
+            headers=headers,
+        )
+        page.request.post(
+            f"{live_server}/api/precos",
+            data=json.dumps({"preco": 1.0}),
+            headers=headers,
+        )
+        res = page.request.post(
+            f"{live_server}/api/saidas",
+            data=json.dumps({"quantidade": 5}),
+            headers=headers,
+        )
+        assert res.status == 200
+        sale_id = res.json()["id"]
+        res = page.request.delete(
+            f"{live_server}/api/saidas/{sale_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status == 200
+        assert res.json()["success"] is True
+
+    def test_quebrado_delete_returns_success(self, page, live_server):
+        token = self._get_token(page, live_server)
+        headers = self._auth_headers(token)
+        page.request.post(
+            f"{live_server}/api/entradas",
+            data=json.dumps({"quantidade": 20}),
+            headers=headers,
+        )
+        res = page.request.post(
+            f"{live_server}/api/quebrados",
+            data=json.dumps({"quantidade": 3, "motivo": "teste"}),
+            headers=headers,
+        )
+        assert res.status == 200
+        entry_id = res.json()["id"]
+        res = page.request.delete(
+            f"{live_server}/api/quebrados/{entry_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status == 200
+        assert res.json()["success"] is True

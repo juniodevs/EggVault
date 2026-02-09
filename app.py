@@ -18,6 +18,8 @@ from services.auth_service import AuthService
 from services.export_service import ExportService
 from datetime import datetime
 import os
+import re
+import secrets
 
 app = Flask(__name__, 
     static_url_path='/static',
@@ -25,14 +27,31 @@ app = Flask(__name__,
     template_folder='templates'
 )
 
-# Desabilitar cache de arquivos estáticos em produção (para debug)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
+
 if os.environ.get('VERCEL'):
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
+init_db()
+def _validate_mes(mes):
+    """Valida formato de mês (YYYY-MM). Retorna o valor ou levanta ValueError."""
+    if not mes or not re.match(r'^\d{4}-(0[1-9]|1[0-2])$', mes):
+        raise ValueError('Formato de mês inválido. Use AAAA-MM (ex: 2026-02).')
+    return mes
 
-# ═══════════════════════════════════════════
-# MIDDLEWARE DE AUTENTICAÇÃO
-# ═══════════════════════════════════════════
+
+def _validate_ano(ano):
+    """Valida formato de ano (YYYY). Retorna o valor ou levanta ValueError."""
+    if not ano or not re.match(r'^\d{4}$', ano):
+        raise ValueError('Formato de ano inválido. Use AAAA (ex: 2026).')
+    return ano
+
+
+def _safe_error_message(e):
+    """Retorna mensagem de erro segura para o cliente (oculta detalhes internos em produção)."""
+    if app.debug or app.config.get('TESTING'):
+        return str(e)
+    return 'Erro interno do servidor'
 
 def login_required(f):
     """Decorator que exige autenticação via token."""
@@ -62,19 +81,10 @@ def admin_required(f):
     return decorated
 
 
-# ═══════════════════════════════════════════
-# PÁGINA PRINCIPAL
-# ═══════════════════════════════════════════
-
 @app.route('/')
 def index():
     """Serve a página principal (SPA)."""
     return render_template('index.html')
-
-
-# ═══════════════════════════════════════════
-# API — AUTENTICAÇÃO
-# ═══════════════════════════════════════════
 
 @app.route('/api/auth/login', methods=['POST'])
 def auth_login():
@@ -91,13 +101,15 @@ def auth_login():
         response = jsonify({'success': True, 'data': result})
         response.set_cookie(
             'auth_token', result['token'],
-            httponly=True, samesite='Strict', max_age=72*3600
+            httponly=True, samesite='Strict',
+            secure=request.is_secure or bool(os.environ.get('VERCEL')),
+            max_age=72*3600
         )
         return response
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 401
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/auth/me', methods=['GET'])
@@ -127,7 +139,7 @@ def auth_logout():
         response.delete_cookie('auth_token')
         return response
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/auth/alterar-senha', methods=['POST'])
@@ -150,12 +162,8 @@ def auth_alterar_senha():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
-
-# ═══════════════════════════════════════════
-# API — ESTOQUE
-# ═══════════════════════════════════════════
 
 @app.route('/api/estoque', methods=['GET'])
 @login_required
@@ -165,12 +173,7 @@ def get_estoque():
         estoque = EstoqueService.get_estoque()
         return jsonify({'success': True, 'data': estoque})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ═══════════════════════════════════════════
-# API — ENTRADAS
-# ═══════════════════════════════════════════
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 @app.route('/api/entradas', methods=['GET'])
 @login_required
@@ -178,10 +181,13 @@ def get_entradas():
     """Lista entradas filtradas por mês."""
     try:
         mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        _validate_mes(mes)
         entradas = EntradaService.listar(mes)
         return jsonify({'success': True, 'data': entradas})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/entradas', methods=['POST'])
@@ -208,12 +214,8 @@ def add_entrada():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
-
-# ═══════════════════════════════════════════
-# API — ENTRADAS (DELETE)
-# ═══════════════════════════════════════════
 
 @app.route('/api/entradas/<int:entry_id>', methods=['DELETE'])
 @login_required
@@ -228,12 +230,7 @@ def delete_entrada(entry_id):
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ═══════════════════════════════════════════
-# API — SAÍDAS / VENDAS
-# ═══════════════════════════════════════════
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 @app.route('/api/saidas', methods=['GET'])
 @login_required
@@ -241,10 +238,13 @@ def get_saidas():
     """Lista vendas filtradas por mês."""
     try:
         mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        _validate_mes(mes)
         saidas = SaidaService.listar(mes)
         return jsonify({'success': True, 'data': saidas})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/saidas', methods=['POST'])
@@ -278,7 +278,7 @@ def add_saida():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/saidas/<int:sale_id>', methods=['DELETE'])
@@ -294,12 +294,7 @@ def delete_saida(sale_id):
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ═══════════════════════════════════════════
-# API — PREÇOS
-# ═══════════════════════════════════════════
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 @app.route('/api/precos', methods=['GET'])
 @login_required
@@ -309,7 +304,7 @@ def get_precos():
         precos = PrecoService.historico()
         return jsonify({'success': True, 'data': precos})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/precos/ativo', methods=['GET'])
@@ -320,7 +315,7 @@ def get_preco_ativo():
         preco = PrecoService.get_ativo()
         return jsonify({'success': True, 'data': preco})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/precos', methods=['POST'])
@@ -342,12 +337,7 @@ def set_preco():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ═══════════════════════════════════════════
-# API — OVOS QUEBRADOS
-# ═══════════════════════════════════════════
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 @app.route('/api/quebrados', methods=['GET'])
 @login_required
@@ -355,10 +345,13 @@ def get_quebrados():
     """Lista registros de ovos quebrados filtrados por mês."""
     try:
         mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        _validate_mes(mes)
         quebrados = QuebradoService.listar(mes)
         return jsonify({'success': True, 'data': quebrados})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/quebrados', methods=['POST'])
@@ -385,7 +378,7 @@ def add_quebrado():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/quebrados/<int:entry_id>', methods=['DELETE'])
@@ -401,7 +394,7 @@ def delete_quebrado(entry_id):
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 # ═══════════════════════════════════════════
@@ -414,10 +407,13 @@ def get_consumo():
     """Lista registros de consumo pessoal filtrados por mês."""
     try:
         mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        _validate_mes(mes)
         consumo = ConsumoService.listar(mes)
         return jsonify({'success': True, 'data': consumo})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/consumo', methods=['POST'])
@@ -444,7 +440,7 @@ def add_consumo():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/consumo/<int:entry_id>', methods=['DELETE'])
@@ -460,7 +456,7 @@ def delete_consumo(entry_id):
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 # ═══════════════════════════════════════════
@@ -473,10 +469,13 @@ def get_despesas():
     """Lista despesas filtradas por mês."""
     try:
         mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        _validate_mes(mes)
         despesas = DespesaService.listar(mes)
         return jsonify({'success': True, 'data': despesas})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/despesas', methods=['POST'])
@@ -503,7 +502,7 @@ def add_despesa():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/despesas/<int:entry_id>', methods=['DELETE'])
@@ -519,7 +518,7 @@ def delete_despesa(entry_id):
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 # ═══════════════════════════════════════════
@@ -532,10 +531,13 @@ def get_relatorio():
     """Retorna o resumo mensal."""
     try:
         mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        _validate_mes(mes)
         resumo = RelatorioService.get_resumo(mes)
         return jsonify({'success': True, 'data': resumo})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/relatorio/anual', methods=['GET'])
@@ -544,10 +546,13 @@ def get_relatorio_anual():
     """Retorna os dados anuais para gráficos."""
     try:
         ano = request.args.get('ano', datetime.now().strftime('%Y'))
+        _validate_ano(ano)
         dados = RelatorioService.get_dados_anuais(ano)
         return jsonify({'success': True, 'data': dados})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/meses', methods=['GET'])
@@ -580,7 +585,7 @@ def get_meses():
 
         return jsonify({'success': True, 'data': meses})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 # ═══════════════════════════════════════════
@@ -595,7 +600,7 @@ def admin_listar_usuarios():
         usuarios = AuthService.listar_usuarios()
         return jsonify({'success': True, 'data': usuarios})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/admin/usuarios', methods=['POST'])
@@ -621,7 +626,7 @@ def admin_criar_usuario():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/admin/usuarios/<int:usuario_id>', methods=['PUT'])
@@ -643,7 +648,7 @@ def admin_atualizar_usuario(usuario_id):
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/admin/usuarios/<int:usuario_id>', methods=['DELETE'])
@@ -656,7 +661,7 @@ def admin_deletar_usuario(usuario_id):
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 # ═══════════════════════════════════════════
@@ -677,7 +682,7 @@ def admin_get_configuracoes():
         config = {row['chave']: row['valor'] for row in rows}
         return jsonify({'success': True, 'data': config})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/admin/configuracoes', methods=['PUT'])
@@ -744,7 +749,7 @@ def admin_update_configuracoes():
         conn.close()
         return jsonify({'success': True, 'message': 'Configurações atualizadas'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/configuracoes/consumo-habilitado', methods=['GET'])
@@ -761,7 +766,7 @@ def get_consumo_habilitado():
         habilitado = row['valor'] == '1' if row else False
         return jsonify({'success': True, 'data': {'habilitado': habilitado}})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/configuracoes/gerais', methods=['GET'])
@@ -781,7 +786,7 @@ def get_configuracoes_gerais():
         config = {row['chave']: row['valor'] for row in rows}
         return jsonify({'success': True, 'data': config})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 # ═══════════════════════════════════════════
@@ -794,6 +799,7 @@ def export_excel():
     """Exporta relatório mensal em Excel."""
     try:
         mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        _validate_mes(mes)
         output = ExportService.exportar_excel(mes)
         filename = f'EggVault_Relatorio_{mes}.xlsx'
         return send_file(
@@ -802,8 +808,10 @@ def export_excel():
             as_attachment=True,
             download_name=filename
         )
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/export/pdf', methods=['GET'])
@@ -812,6 +820,7 @@ def export_pdf():
     """Exporta relatório mensal em PDF."""
     try:
         mes = request.args.get('mes', datetime.now().strftime('%Y-%m'))
+        _validate_mes(mes)
         output = ExportService.exportar_pdf(mes)
         filename = f'EggVault_Relatorio_{mes}.pdf'
         return send_file(
@@ -820,8 +829,10 @@ def export_pdf():
             as_attachment=True,
             download_name=filename
         )
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 @app.route('/api/export/excel-anual', methods=['GET'])
@@ -830,6 +841,7 @@ def export_excel_anual():
     """Exporta resumo anual em Excel."""
     try:
         ano = request.args.get('ano', datetime.now().strftime('%Y'))
+        _validate_ano(ano)
         output = ExportService.exportar_excel_anual(ano)
         filename = f'EggVault_Anual_{ano}.xlsx'
         return send_file(
@@ -838,8 +850,10 @@ def export_excel_anual():
             as_attachment=True,
             download_name=filename
         )
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
 
 
 # ═══════════════════════════════════════════
@@ -847,7 +861,6 @@ def export_excel_anual():
 # ═══════════════════════════════════════════
 
 if __name__ == '__main__':
-    init_db()
-    print("🥚 EggVaultiniciado!")
+    print("🥚 EggVault iniciado!")
     print("📍 Acesse: http://localhost:5000")
     app.run(debug=True, port=5000)

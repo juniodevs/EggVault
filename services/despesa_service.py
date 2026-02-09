@@ -31,6 +31,9 @@ class DespesaService:
         if not descricao or not descricao.strip():
             raise ValueError("Descrição da despesa é obrigatória")
 
+        if len(descricao.strip()) > 500:
+            raise ValueError("Descrição deve ter no máximo 500 caracteres")
+
         mes_ref = datetime.now().strftime('%Y-%m')
         entry_id = DespesaRepository.create(valor, descricao.strip(), mes_ref, usuario_id, usuario_nome)
         RelatorioService.atualizar_resumo(mes_ref)
