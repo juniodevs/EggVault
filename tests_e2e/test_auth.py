@@ -48,6 +48,16 @@ class TestLoginPage:
 
         # Overlay deve sumir (display:none via classe .hidden)
         page.wait_for_selector("#login-overlay", state="hidden", timeout=15000)
+        
+        # Aguarda e fecha modal de changelog se aparecer
+        page.wait_for_timeout(1500)
+        try:
+            if page.locator("#modal-changelog").is_visible():
+                page.locator(".btn-close-changelog").click()
+                page.wait_for_selector("#modal-changelog", state="hidden", timeout=3000)
+        except:
+            pass
+        
         assert not page.locator("#login-overlay").is_visible()
 
     def test_login_shows_username_in_sidebar(self, authenticated_page):

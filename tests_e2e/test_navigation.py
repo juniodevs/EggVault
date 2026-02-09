@@ -199,6 +199,15 @@ class TestMobileResponsive:
         pg.fill("#login-password", "admin")
         pg.click("#btn-login")
         pg.wait_for_selector("#login-overlay", state="hidden", timeout=15000)
+        
+        # Aguarda e fecha modal de changelog se aparecer
+        pg.wait_for_timeout(1500)
+        try:
+            if pg.locator("#modal-changelog").is_visible():
+                pg.locator(".btn-close-changelog").click()
+                pg.wait_for_selector("#modal-changelog", state="hidden", timeout=3000)
+        except:
+            pass
 
         btn = pg.locator("#mobile-menu-btn")
         assert btn.is_visible()
@@ -219,6 +228,15 @@ class TestMobileResponsive:
         pg.fill("#login-password", "admin")
         pg.click("#btn-login")
         pg.wait_for_selector("#login-overlay", state="hidden", timeout=15000)
+        
+        # Aguarda e fecha modal de changelog se aparecer
+        pg.wait_for_timeout(1500)
+        try:
+            if pg.locator("#modal-changelog").is_visible():
+                pg.locator(".btn-close-changelog").click()
+                pg.wait_for_selector("#modal-changelog", state="hidden", timeout=3000)
+        except:
+            pass
 
         sidebar = pg.locator("#sidebar")
         classes = sidebar.get_attribute("class") or ""

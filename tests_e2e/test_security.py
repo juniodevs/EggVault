@@ -187,6 +187,15 @@ class TestXSSProtection:
         page.fill("#login-password", "admin")
         page.click("#btn-login")
         page.wait_for_selector("#login-overlay", state="hidden", timeout=15000)
+        
+        # Aguarda e fecha modal de changelog se aparecer
+        page.wait_for_timeout(1500)
+        try:
+            if page.locator("#modal-changelog").is_visible():
+                page.locator(".btn-close-changelog").click()
+                page.wait_for_selector("#modal-changelog", state="hidden", timeout=3000)
+        except:
+            pass
 
         page.click('li[data-tab="entradas"]')
         page.wait_for_timeout(1000)
@@ -234,6 +243,15 @@ class TestXSSProtection:
         page.fill("#login-password", "admin")
         page.click("#btn-login")
         page.wait_for_selector("#login-overlay", state="hidden", timeout=15000)
+        
+        # Aguarda e fecha modal de changelog se aparecer
+        page.wait_for_timeout(1500)
+        try:
+            if page.locator("#modal-changelog").is_visible():
+                page.locator(".btn-close-changelog").click()
+                page.wait_for_selector("#modal-changelog", state="hidden", timeout=3000)
+        except:
+            pass
 
         page.click('li[data-tab="quebrados"]')
         page.wait_for_timeout(1000)

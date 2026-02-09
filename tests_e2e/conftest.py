@@ -66,6 +66,22 @@ def _cleanup_db(db_path):
                 pass
 
 
+def _close_changelog_if_visible(page, timeout=3000):
+    """Fecha o modal de changelog se ele estiver visível."""
+    try:
+        # Verifica se o modal está visível
+        changelog_modal = page.locator("#modal-changelog")
+        if changelog_modal.is_visible():
+            # Clica no botão de fechar
+            close_btn = page.locator(".btn-close-changelog")
+            close_btn.click()
+            # Aguarda o modal fechar
+            page.wait_for_selector("#modal-changelog", state="hidden", timeout=timeout)
+    except Exception:
+        # Se o modal não existir ou já estiver fechado, não faz nada
+        pass
+
+
 def _start_flask_server(port, db_path):
     """Inicia o servidor Flask em uma thread daemon."""
     os.environ["OVOS_DB_PATH"] = db_path
@@ -202,6 +218,13 @@ def authenticated_page(page):
 
     # Aguarda o login completar: overlay desaparece (display:none)
     page.wait_for_selector("#login-overlay", state="hidden", timeout=DEFAULT_TIMEOUT)
+    
+    # Aguarda um pouco para o changelog aparecer
+    page.wait_for_timeout(1500)
+    
+    # Fecha o modal de changelog se estiver visível
+    _close_changelog_if_visible(page)
+    
     return page
 
 
