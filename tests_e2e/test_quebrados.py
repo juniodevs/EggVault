@@ -120,3 +120,69 @@ class TestQuebradoDelete:
             if confirm.is_visible():
                 confirm.click()
             page.wait_for_timeout(1500)
+
+
+class TestQuebradoTotals:
+    """Testes dos totais nas tabelas de quebrados."""
+
+    def test_quebrado_total_row_visible(self, authenticated_page):
+        """Linha de total deve estar visível após registrar quebrados."""
+        page = authenticated_page
+        _add_stock(page, 100)
+
+        page.click('li[data-tab="quebrados"]')
+        page.wait_for_timeout(500)
+
+        total_row = page.locator("#quebrados-hoje-list tr.total-row")
+        total_before = 0
+        if total_row.is_visible():
+            import re
+            match = re.search(r'(\d+)', total_row.inner_text())
+            if match:
+                total_before = int(match.group(1))
+
+        page.fill("#quebrado-quantidade", "5")
+        page.fill("#quebrado-motivo", "Teste 1")
+        page.click('#form-quebrado button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        page.fill("#quebrado-quantidade", "3")
+        page.fill("#quebrado-motivo", "Teste 2")
+        page.click('#form-quebrado button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        total_row = page.locator("#quebrados-hoje-list tr.total-row")
+        assert total_row.is_visible()
+
+        text = total_row.inner_text()
+        assert "TOTAL" in text
+        
+        import re
+        match = re.search(r'(\d+)', text)
+        assert match, "Total deve conter um número"
+        total_after = int(match.group(1))
+        assert total_after >= total_before + 8
+
+    def test_quebrado_total_header_match(self, authenticated_page):
+        """Total no cabeçalho deve coincidir com total na tabela."""
+        page = authenticated_page
+        _add_stock(page, 100)
+
+        page.click('li[data-tab="quebrados"]')
+        page.wait_for_timeout(500)
+
+        page.fill("#quebrado-quantidade", "6")
+        page.click('#form-quebrado button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        header_total = page.locator("#quebrados-hoje-total").inner_text()
+        
+        total_row = page.locator("#quebrados-hoje-list tr.total-row")
+        table_total = total_row.inner_text()
+
+        import re
+        header_num = int(re.search(r'(\d+)', header_total).group(1))
+        table_num = int(re.search(r'(\d+)', table_total).group(1))
+
+        assert header_num >= 6
+        assert header_num == table_num

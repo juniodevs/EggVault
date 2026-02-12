@@ -788,6 +788,23 @@ tbody tr:hover {
     background: #f8fafc;
 }
 
+tbody tr.total-row {
+    background: linear-gradient(135deg, #fef9f3, #fef3e2);
+    border-top: 2px solid var(--warning);
+    font-weight: 600;
+}
+
+tbody tr.total-row:hover {
+    background: linear-gradient(135deg, #fef5e7, #feebc8);
+}
+
+tbody tr.total-row td {
+    padding: 16px;
+    color: var(--text);
+    border-bottom: none;
+    font-size: 0.95rem;
+}
+
 .empty-state {
     text-align: center;
     color: var(--text-muted);
