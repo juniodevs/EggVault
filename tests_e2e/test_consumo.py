@@ -233,6 +233,74 @@ class TestConsumoDelete:
         assert "admin" in text.lower() or "administrador" in text.lower()
 
 
+class TestConsumoTotals:
+    """Testes dos totais nas tabelas de consumo."""
+
+    def test_consumo_total_row_visible(self, authenticated_page):
+        """Linha de total deve estar visível após registrar consumos."""
+        page = authenticated_page
+        _add_stock(page, 100)
+        _enable_consumo(page)
+
+        page.click('li[data-tab="consumo"]')
+        page.wait_for_timeout(500)
+
+        total_row = page.locator("#consumo-hoje-list tr.total-row")
+        total_before = 0
+        if total_row.is_visible():
+            import re
+            match = re.search(r'(\d+)', total_row.inner_text())
+            if match:
+                total_before = int(match.group(1))
+
+        page.fill("#consumo-quantidade", "4")
+        page.fill("#consumo-observacao", "Café")
+        page.click('#form-consumo button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        page.fill("#consumo-quantidade", "2")
+        page.fill("#consumo-observacao", "Lanche")
+        page.click('#form-consumo button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        total_row = page.locator("#consumo-hoje-list tr.total-row")
+        assert total_row.is_visible()
+
+        text = total_row.inner_text()
+        assert "TOTAL" in text
+        
+        import re
+        match = re.search(r'(\d+)', text)
+        assert match, "Total deve conter um número"
+        total_after = int(match.group(1))
+        assert total_after >= total_before + 6
+
+    def test_consumo_total_header_match(self, authenticated_page):
+        """Total no cabeçalho deve coincidir com total na tabela."""
+        page = authenticated_page
+        _add_stock(page, 100)
+        _enable_consumo(page)
+
+        page.click('li[data-tab="consumo"]')
+        page.wait_for_timeout(500)
+
+        page.fill("#consumo-quantidade", "5")
+        page.click('#form-consumo button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        header_total = page.locator("#consumo-hoje-total").inner_text()
+        
+        total_row = page.locator("#consumo-hoje-list tr.total-row")
+        table_total = total_row.inner_text()
+
+        import re
+        header_num = int(re.search(r'(\d+)', header_total).group(1))
+        table_num = int(re.search(r'(\d+)', table_total).group(1))
+
+        assert header_num >= 5
+        assert header_num == table_num
+
+
 class TestConsumoValidation:
     """Testes de validação do formulário de consumo."""
 

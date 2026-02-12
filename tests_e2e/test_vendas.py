@@ -9,6 +9,7 @@ Cobre:
   • Validação estoque insuficiente
 """
 
+import re
 import pytest
 
 pytestmark = [pytest.mark.e2e, pytest.mark.ui]
@@ -109,9 +110,9 @@ class TestVendaForm:
         # Verificar estoque inicial
         page.click('li[data-tab="estoque"]')
         page.wait_for_timeout(1000)
-        stock_before = int(page.locator("#stock-quantity").inner_text())
+        stock_text = page.locator("#stock-quantity").inner_text()
+        stock_before = int(re.sub(r'[^\d]', '', stock_text))
 
-        # Fazer venda
         page.click('li[data-tab="vendas"]')
         page.wait_for_timeout(500)
         page.fill("#venda-quantidade", "15")
@@ -119,10 +120,10 @@ class TestVendaForm:
         page.click('#form-venda button[type="submit"]')
         page.wait_for_timeout(1500)
 
-        # Verificar estoque depois
         page.click('li[data-tab="estoque"]')
         page.wait_for_timeout(1000)
-        stock_after = int(page.locator("#stock-quantity").inner_text())
+        stock_text = page.locator("#stock-quantity").inner_text()
+        stock_after = int(re.sub(r'[^\d]', '', stock_text))
 
         assert stock_after == stock_before - 15
 
@@ -151,3 +152,82 @@ class TestVendaDelete:
             if confirm.is_visible():
                 confirm.click()
             page.wait_for_timeout(1500)
+
+
+class TestVendaTotals:
+    """Testes dos totais nas tabelas de vendas."""
+
+    def test_venda_total_row_visible(self, authenticated_page):
+        """Linha de total deve estar visível após registrar vendas."""
+        page = authenticated_page
+        _add_stock(page, 100)
+
+        page.click('li[data-tab="vendas"]')
+        page.wait_for_timeout(500)
+
+        # Verificar total antes
+        total_row = page.locator("#vendas-hoje-list tr.total-row")
+        total_before = 0
+        if total_row.is_visible():
+            match = re.search(r'(\d+)\s+ovos', total_row.inner_text())
+            if match:
+                total_before = int(match.group(1))
+
+        # Registrar múltiplas vendas
+        page.fill("#venda-quantidade", "10")
+        page.fill("#venda-preco", "1.50")
+        page.click('#form-venda button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        page.fill("#venda-quantidade", "5")
+        page.fill("#venda-preco", "2.00")
+        page.click('#form-venda button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        # Verificar se a linha de total existe
+        total_row = page.locator("#vendas-hoje-list tr.total-row")
+        assert total_row.is_visible()
+
+        # Verificar se o total está correto
+        text = total_row.inner_text()
+        assert "TOTAL" in text
+        
+        # Extrair quantidade de ovos e verificar que aumentou pelo menos 15
+        match = re.search(r'(\d+)\s+ovos', text)
+        assert match, "Total deve conter quantidade de ovos"
+        total_after = int(match.group(1))
+        assert total_after >= total_before + 15
+
+    def test_venda_total_shows_quantity_and_value(self, authenticated_page):
+        """Total de vendas deve mostrar quantidade e valor."""
+        page = authenticated_page
+        _add_stock(page, 100)
+
+        page.click('li[data-tab="vendas"]')
+        page.wait_for_timeout(500)
+
+        # Verificar total antes
+        header_total_before = page.locator("#vendas-hoje-total").inner_text()
+        qty_before = 0
+        match = re.search(r'(\d+)\s+ovos', header_total_before)
+        if match:
+            qty_before = int(match.group(1))
+
+        # Registrar venda
+        page.fill("#venda-quantidade", "12")
+        page.fill("#venda-preco", "1.00")
+        page.click('#form-venda button[type="submit"]')
+        page.wait_for_timeout(1500)
+
+        # Verificar total no cabeçalho
+        header_total = page.locator("#vendas-hoje-total").inner_text()
+        
+        # Deve conter quantidade e valor formatados corretamente
+        assert "ovos" in header_total
+        assert "R$" in header_total or "•" in header_total  # Separador entre qtd e valor
+        
+        # Verificar que a quantidade aumentou pelo menos 12
+        match = re.search(r'(\d+)\s+ovos', header_total)
+        assert match, "Total deve conter quantidade de ovos"
+        qty_after = int(match.group(1))
+        assert qty_after >= qty_before + 12

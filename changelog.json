@@ -1,6 +1,22 @@
 {
-    "currentVersion": "1.0.0",
+    "currentVersion": "1.1.0",
     "versions": [
+        {
+            "version": "1.1.0",
+            "date": "2026-02-12",
+            "title": "Melhorias nas Tabelas - Totais Visíveis",
+            "features": [
+                "Adicionado rodapé com totais em todas as tabelas de 'Hoje' (Entradas, Vendas, Quebrados, Consumo e Despesas)",
+                "Totais de vendas agora mostram quantidade de ovos além do valor em reais",
+                "Linha de total destacada com visual diferenciado para melhor visibilidade",
+                "Totais exibidos tanto no cabeçalho quanto dentro das tabelas"
+            ],
+            "improvements": [
+                "Interface mais intuitiva com apresentação clara de totais diários",
+                "Melhor visualização de dados consolidados em cada seção"
+            ],
+            "fixes": []
+        },
         {
             "version": "1.0.0",
             "date": "2026-02-09",

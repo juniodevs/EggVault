@@ -590,7 +590,7 @@ function renderEntradasHoje(entradas) {
     }
 
     let totalHoje = 0;
-    tbody.innerHTML = entradas.map(e => {
+    const rows = entradas.map(e => {
         totalHoje += e.quantidade;
         const hora = new Date(e.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         return `
@@ -608,6 +608,14 @@ function renderEntradasHoje(entradas) {
         `;
     }).join('');
 
+    const footerRow = `
+        <tr class="total-row">
+            <td><strong>TOTAL</strong></td>
+            <td colspan="4"><strong>${totalHoje} ovos</strong></td>
+        </tr>
+    `;
+
+    tbody.innerHTML = rows + footerRow;
     document.getElementById('entradas-hoje-total').textContent = `${totalHoje} ovos`;
 }
 
@@ -750,8 +758,10 @@ function renderVendasHoje(vendas) {
     }
 
     let totalHoje = 0;
-    tbody.innerHTML = vendas.map(s => {
+    let totalQtd = 0;
+    const rows = vendas.map(s => {
         totalHoje += s.valor_total;
+        totalQtd += s.quantidade;
         const hora = new Date(s.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         return `
             <tr>
@@ -769,7 +779,17 @@ function renderVendasHoje(vendas) {
         `;
     }).join('');
 
-    document.getElementById('vendas-hoje-total').textContent = formatCurrency(totalHoje);
+    const footerRow = `
+        <tr class="total-row">
+            <td><strong>TOTAL</strong></td>
+            <td><strong>${totalQtd} ovos</strong></td>
+            <td colspan="2"><strong>${formatCurrency(totalHoje)}</strong></td>
+            <td colspan="2"></td>
+        </tr>
+    `;
+
+    tbody.innerHTML = rows + footerRow;
+    document.getElementById('vendas-hoje-total').textContent = `${totalQtd} ovos • ${formatCurrency(totalHoje)}`;
 }
 
 function renderVendasAnteriores(vendasPorDia, hoje) {
@@ -788,9 +808,11 @@ function renderVendasAnteriores(vendasPorDia, hoje) {
     container.innerHTML = datasAnteriores.map(data => {
         const vendas = vendasPorDia[data];
         let totalDia = 0;
+        let totalQtdDia = 0;
         
         const rows = vendas.map(s => {
             totalDia += s.valor_total;
+            totalQtdDia += s.quantidade;
             const hora = new Date(s.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             return `
                 <tr>
@@ -814,7 +836,7 @@ function renderVendasAnteriores(vendasPorDia, hoje) {
             <div class="day-section">
                 <div class="day-section-header">
                     <span class="day-date">${dataFormatada}</span>
-                    <span class="day-total">Total: ${formatCurrency(totalDia)}</span>
+                    <span class="day-total">${totalQtdDia} ovos • ${formatCurrency(totalDia)}</span>
                 </div>
                 <div class="table-wrapper">
                     <table>
@@ -952,7 +974,7 @@ function renderQuebradosHoje(quebrados) {
     }
 
     let totalHoje = 0;
-    tbody.innerHTML = quebrados.map(q => {
+    const rows = quebrados.map(q => {
         totalHoje += q.quantidade;
         const hora = new Date(q.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         return `
@@ -970,6 +992,14 @@ function renderQuebradosHoje(quebrados) {
         `;
     }).join('');
 
+    const footerRow = `
+        <tr class="total-row">
+            <td><strong>TOTAL</strong></td>
+            <td colspan="4"><strong>${totalHoje} ovos</strong></td>
+        </tr>
+    `;
+
+    tbody.innerHTML = rows + footerRow;
     document.getElementById('quebrados-hoje-total').textContent = `${totalHoje} ovos`;
 }
 
@@ -1115,7 +1145,7 @@ function renderConsumoHoje(consumos) {
     }
 
     let totalHoje = 0;
-    tbody.innerHTML = consumos.map(c => {
+    const rows = consumos.map(c => {
         totalHoje += c.quantidade;
         const hora = new Date(c.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         return `
@@ -1133,6 +1163,14 @@ function renderConsumoHoje(consumos) {
         `;
     }).join('');
 
+    const footerRow = `
+        <tr class="total-row">
+            <td><strong>TOTAL</strong></td>
+            <td colspan="4"><strong>${totalHoje} ovos</strong></td>
+        </tr>
+    `;
+
+    tbody.innerHTML = rows + footerRow;
     document.getElementById('consumo-hoje-total').textContent = `${totalHoje} ovos`;
 }
 
@@ -1272,7 +1310,7 @@ function renderDespesasHoje(despesas) {
     }
 
     let totalHoje = 0;
-    tbody.innerHTML = despesas.map(d => {
+    const rows = despesas.map(d => {
         totalHoje += d.valor || 0;
         const hora = new Date(d.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         return `
@@ -1290,6 +1328,14 @@ function renderDespesasHoje(despesas) {
         `;
     }).join('');
 
+    const footerRow = `
+        <tr class="total-row">
+            <td><strong>TOTAL</strong></td>
+            <td colspan="4"><strong>${formatCurrency(totalHoje)}</strong></td>
+        </tr>
+    `;
+
+    tbody.innerHTML = rows + footerRow;
     document.getElementById('despesas-hoje-total').textContent = formatCurrency(totalHoje);
 }
 
