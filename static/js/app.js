@@ -74,6 +74,19 @@ function clearToken() {
     localStorage.removeItem('auth_token');
 }
 
+// ─── Sidebar helpers (mobile) ───────────────────────────────
+function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebar-overlay').classList.add('active');
+}
+
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (overlay) overlay.classList.remove('active');
+}
+// ────────────────────────────────────────────────────────────
+
 function showLogin() {
     document.getElementById('login-overlay').classList.remove('hidden');
     document.getElementById('login-username').value = '';
@@ -102,6 +115,8 @@ async function checkAuth() {
             document.getElementById('sidebar-username').textContent = data.data.nome || data.data.username;
             const navAdmin = document.getElementById('nav-admin');
             if (navAdmin) navAdmin.style.display = data.data.is_admin ? '' : 'none';
+            const bottomAdmin = document.getElementById('bottom-nav-admin');
+            if (bottomAdmin) bottomAdmin.style.display = data.data.is_admin ? '' : 'none';
             await loadConfigGerais();
             await checkConsumoHabilitado();
             setTimeout(() => checkForUpdates(), 500);
@@ -143,6 +158,8 @@ async function doLogin(username, password) {
                 data.data.usuario.nome || data.data.usuario.username;
             const navAdmin = document.getElementById('nav-admin');
             if (navAdmin) navAdmin.style.display = data.data.usuario.is_admin ? '' : 'none';
+            const bottomAdmin = document.getElementById('bottom-nav-admin');
+            if (bottomAdmin) bottomAdmin.style.display = data.data.usuario.is_admin ? '' : 'none';
             await checkConsumoHabilitado();
             loadEstoque();
             showToast(`Bem-vindo, ${data.data.usuario.nome || data.data.usuario.username}!`, 'success');
@@ -191,7 +208,7 @@ function showChangePassword() {
     document.getElementById('confirmar-senha').value = '';
     document.getElementById('senha-atual').focus();
 
-    document.getElementById('sidebar').classList.remove('open');
+    closeSidebar();
 }
 
 function hideChangePassword() {
@@ -430,10 +447,19 @@ function switchTab(tabName) {
         switchTab('estoque');
         return;
     }
-    // Atualizar sidebar
+    // Atualizar sidebar nav
     document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'));
-    const target = document.querySelector(`.nav-links li[data-tab="${tabName}"]`);
-    if (target) target.classList.add('active');
+    const sidebarTarget = document.querySelector(`.nav-links li[data-tab="${tabName}"]`);
+    if (sidebarTarget) sidebarTarget.classList.add('active');
+
+    // Atualizar bottom nav
+    document.querySelectorAll('.bottom-nav-item').forEach(btn => btn.classList.remove('active'));
+    const bottomTarget = document.querySelector(`.bottom-nav-item[data-tab="${tabName}"]`);
+    if (bottomTarget) {
+        bottomTarget.classList.add('active');
+        // Scroll bottom nav to keep item visible
+        bottomTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
 
     // Atualizar conteúdo
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -444,7 +470,7 @@ function switchTab(tabName) {
     loadTabData(tabName);
 
     // Fechar menu mobile
-    document.getElementById('sidebar').classList.remove('open');
+    closeSidebar();
 }
 
 async function loadTabData(tabName, forceRefresh = false) {
@@ -1935,9 +1961,9 @@ async function checkConsumoHabilitado() {
         
         // Mostrar ou ocultar a aba de consumo
         const navConsumo = document.getElementById('nav-consumo');
-        if (navConsumo) {
-            navConsumo.style.display = habilitado ? '' : 'none';
-        }
+        if (navConsumo) navConsumo.style.display = habilitado ? '' : 'none';
+        const bottomConsumo = document.getElementById('bottom-nav-consumo');
+        if (bottomConsumo) bottomConsumo.style.display = habilitado ? '' : 'none';
         
         return habilitado;
     } catch (e) {
@@ -2261,24 +2287,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ── Navegação por abas ──
+    // ── Navegação por abas (sidebar) ──
     document.querySelectorAll('.nav-links li').forEach(li => {
         li.addEventListener('click', () => switchTab(li.dataset.tab));
     });
 
+    // ── Navegação por abas (bottom nav) ──
+    document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
     // ── Menu mobile ──
     const mobileBtn = document.getElementById('mobile-menu-btn');
-    const sidebar = document.getElementById('sidebar');
-    mobileBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
-
-    // Fechar sidebar ao clicar fora (mobile)
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 768 &&
-            !sidebar.contains(e.target) &&
-            !mobileBtn.contains(e.target)) {
-            sidebar.classList.remove('open');
-        }
-    });
+    mobileBtn.addEventListener('click', openSidebar);
 
     // ── Formulário: Cliente ──
     document.getElementById('form-cliente').addEventListener('submit', async (e) => {

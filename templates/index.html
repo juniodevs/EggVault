@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>🥚 EggVault— Gerenciamento de Ovos</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥚</text></svg>">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
@@ -245,6 +245,55 @@
     <button class="mobile-menu-btn" id="mobile-menu-btn">
         <i class="fas fa-bars"></i>
     </button>
+
+    <!-- Overlay escuro ao abrir sidebar no mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- ═══════════════════════════ BOTTOM NAV (mobile) ═══════════════════════════ -->
+    <nav class="bottom-nav" id="bottom-nav" aria-label="Navegação principal">
+        <div class="bottom-nav-inner">
+            <button class="bottom-nav-item active" data-tab="estoque">
+                <i class="fas fa-warehouse"></i>
+                <span>Estoque</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="entradas">
+                <i class="fas fa-arrow-circle-down"></i>
+                <span>Entradas</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="vendas">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Vendas</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="quebrados">
+                <i class="fas fa-heart-crack"></i>
+                <span>Quebrados</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="consumo" id="bottom-nav-consumo" style="display:none;">
+                <i class="fas fa-utensils"></i>
+                <span>Consumo</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="despesas">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Despesas</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="precos">
+                <i class="fas fa-tags"></i>
+                <span>Preços</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="relatorios">
+                <i class="fas fa-chart-pie"></i>
+                <span>Relat.</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="clientes">
+                <i class="fas fa-users"></i>
+                <span>Clientes</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="admin" id="bottom-nav-admin" style="display:none;">
+                <i class="fas fa-users-cog"></i>
+                <span>Admin</span>
+            </button>
+        </div>
+    </nav>
 
     <main class="main-content">
 
