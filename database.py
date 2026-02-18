@@ -262,6 +262,14 @@ _SQLITE_SCHEMA = '''
         valor TEXT NOT NULL,
         atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS clientes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        numero TEXT,
+        data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+        data_ultima_compra DATETIME
+    );
 '''
 
 _POSTGRES_SCHEMA = '''
@@ -366,6 +374,14 @@ _POSTGRES_SCHEMA = '''
         valor TEXT NOT NULL,
         atualizado_em TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS clientes (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        numero TEXT,
+        data_criacao TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        data_ultima_compra TIMESTAMPTZ
+    );
 '''
 
 def init_db():
@@ -392,6 +408,8 @@ def init_db():
         ('usuarios', 'is_admin', 'INTEGER NOT NULL DEFAULT 0'),
         ('resumo_mensal', 'total_despesas', 'REAL NOT NULL DEFAULT 0.0' if not USE_POSTGRES else 'DOUBLE PRECISION NOT NULL DEFAULT 0.0'),
         ('resumo_mensal', 'total_consumo', 'INTEGER NOT NULL DEFAULT 0'),
+        ('saidas', 'cliente_id', 'INTEGER'),
+        ('saidas', 'cliente_nome', "TEXT DEFAULT ''"),
     ]
 
     for table, col, col_type in _migrate_columns:

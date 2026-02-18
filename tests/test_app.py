@@ -305,6 +305,285 @@ class TestVendas(BaseTestCase):
         data = json.loads(res.data)
         self.assertFalse(data['success'])
 
+    def test_venda_com_cliente_valido(self):
+        """Deve registrar venda vinculada a um cliente existente."""
+        self._setup_estoque_e_preco(100, 1.50)
+
+        # Cadastrar cliente
+        r = self._post_json('/api/clientes', {'nome': 'João Teste', 'numero': '11999990000'})
+        cliente_id = json.loads(r.data)['id']
+
+        # Registrar venda com cliente
+        res = self._post_json('/api/saidas', {'quantidade': 10, 'cliente_id': cliente_id})
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+    def test_venda_com_cliente_invalido_continua(self):
+        """Venda com cliente_id inválido não deve bloquear o fluxo."""
+        self._setup_estoque_e_preco(100, 1.50)
+        res = self._post_json('/api/saidas', {'quantidade': 5, 'cliente_id': 99999})
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+    def test_venda_sem_cliente_funciona_normalmente(self):
+        """Venda sem cliente deve continuar funcionando igual ao comportamento anterior."""
+        self._setup_estoque_e_preco(50, 1.00)
+        res = self._post_json('/api/saidas', {'quantidade': 5})
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+    def test_venda_atualiza_ultima_compra_do_cliente(self):
+        """Ao registrar venda com cliente, data_ultima_compra deve ser atualizada."""
+        self._setup_estoque_e_preco(100, 1.50)
+
+        # Cadastrar cliente
+        r = self._post_json('/api/clientes', {'nome': 'Ana Teste'})
+        cliente_id = json.loads(r.data)['id']
+
+        # Verificar que data_ultima_compra é nula inicialmente
+        res_list = self.client.get('/api/clientes')
+        clientes = json.loads(res_list.data)['data']
+        cliente = next(c for c in clientes if c['id'] == cliente_id)
+        self.assertIsNone(cliente.get('data_ultima_compra'))
+
+        # Registrar venda com cliente
+        self._post_json('/api/saidas', {'quantidade': 3, 'cliente_id': cliente_id})
+
+        # Verificar que data_ultima_compra foi atualizada
+        res_list2 = self.client.get('/api/clientes')
+        clientes2 = json.loads(res_list2.data)['data']
+        cliente2 = next(c for c in clientes2 if c['id'] == cliente_id)
+        self.assertIsNotNone(cliente2.get('data_ultima_compra'))
+
+
+class TestClientes(BaseTestCase):
+    """Testes para a funcionalidade de Clientes."""
+
+    def _criar_cliente(self, nome='Maria Silva', numero='11999990000'):
+        """Helper para criar um cliente."""
+        return self._post_json('/api/clientes', {'nome': nome, 'numero': numero})
+
+    # ── CRUD Básico ──────────────────────────────────────────────────────
+
+    def test_listar_clientes_vazio(self):
+        """Lista de clientes deve estar vazia inicialmente."""
+        res = self.client.get('/api/clientes')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+        self.assertEqual(data['data'], [])
+
+    def test_criar_cliente_valido(self):
+        """Deve criar cliente com nome e número."""
+        res = self._criar_cliente('João da Silva', '11988887777')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+        self.assertIn('id', data)
+        self.assertIsInstance(data['id'], int)
+
+    def test_criar_cliente_sem_numero(self):
+        """Deve criar cliente apenas com nome (número é opcional)."""
+        res = self._post_json('/api/clientes', {'nome': 'Pedro Sem Número'})
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+    def test_criar_cliente_nome_vazio_falha(self):
+        """Deve rejeitar cliente sem nome."""
+        res = self._post_json('/api/clientes', {'nome': '  ', 'numero': '11999999999'})
+        data = json.loads(res.data)
+        self.assertFalse(data['success'])
+        self.assertEqual(res.status_code, 400)
+
+    def test_criar_cliente_nome_muito_longo_falha(self):
+        """Deve rejeitar nome com mais de 100 caracteres."""
+        res = self._post_json('/api/clientes', {'nome': 'A' * 101})
+        data = json.loads(res.data)
+        self.assertFalse(data['success'])
+        self.assertEqual(res.status_code, 400)
+
+    def test_criar_cliente_duplicado_falha(self):
+        """Não deve permitir dois clientes com mesmo nome e número."""
+        self._criar_cliente('Carlos', '11911112222')
+        res = self._criar_cliente('Carlos', '11911112222')
+        data = json.loads(res.data)
+        self.assertFalse(data['success'])
+        self.assertEqual(res.status_code, 400)
+
+    def test_mesmo_nome_numero_diferente_ok(self):
+        """Dois clientes com mesmo nome mas números diferentes são permitidos."""
+        self._criar_cliente('Maria', '11900000001')
+        res = self._criar_cliente('Maria', '11900000002')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+    def test_listar_clientes_retorna_todos(self):
+        """Deve retornar todos os clientes cadastrados."""
+        self._criar_cliente('Ana')
+        self._criar_cliente('Bruno', '11988880000')
+        self._criar_cliente('Carla', '11977770000')
+
+        res = self.client.get('/api/clientes')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+        self.assertEqual(len(data['data']), 3)
+
+    def test_listar_clientes_tem_campos_extras(self):
+        """Listagem deve incluir inatividade_texto e whatsapp_url."""
+        self._criar_cliente('Teste', '5511999990000')
+        res = self.client.get('/api/clientes')
+        data = json.loads(res.data)
+        cliente = data['data'][0]
+
+        self.assertIn('inatividade_texto', cliente)
+        self.assertIn('inatividade_dias', cliente)
+        self.assertIn('inativo_30d', cliente)
+        self.assertIn('whatsapp_url', cliente)
+
+    def test_cliente_sem_compra_texto_nunca(self):
+        """Cliente sem vendas deve mostrar 'Nunca comprou'."""
+        self._criar_cliente('Novo Cliente')
+        res = self.client.get('/api/clientes')
+        data = json.loads(res.data)
+        cliente = data['data'][0]
+        self.assertEqual(cliente['inatividade_texto'], 'Nunca comprou')
+        self.assertIsNone(cliente['inatividade_dias'])
+
+    # ── Sanitização de número ───────────────────────────────────────────
+
+    def test_numero_sanitizado_remove_especiais(self):
+        """Número deve ser sanitizado removendo traços, espaços e parênteses."""
+        res = self._post_json('/api/clientes', {'nome': 'Teste Mask', 'numero': '(11) 9 9999-8888'})
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Verificar que foi sanitizado
+        list_res = self.client.get('/api/clientes')
+        list_data = json.loads(list_res.data)
+        numero = list_data['data'][0]['numero']
+        self.assertNotIn(' ', numero)
+        self.assertNotIn('-', numero)
+        self.assertNotIn('(', numero)
+
+    # ── WhatsApp URL ────────────────────────────────────────────────────
+
+    def test_whatsapp_url_com_ddi(self):
+        """Número com DDI (55...) deve gerar URL direta."""
+        self._post_json('/api/clientes', {'nome': 'WA DDI', 'numero': '5511999990000'})
+        res = self.client.get('/api/clientes')
+        cliente = json.loads(res.data)['data'][0]
+        self.assertEqual(cliente['whatsapp_url'], 'https://wa.me/5511999990000')
+
+    def test_whatsapp_url_sem_ddi_assume_br(self):
+        """Número sem DDI deve gerar URL com prefixo 55."""
+        self._post_json('/api/clientes', {'nome': 'WA Sem DDI', 'numero': '11999990000'})
+        res = self.client.get('/api/clientes')
+        cliente = json.loads(res.data)['data'][0]
+        self.assertEqual(cliente['whatsapp_url'], 'https://wa.me/5511999990000')
+
+    def test_whatsapp_url_none_sem_numero(self):
+        """Cliente sem número deve ter whatsapp_url nulo."""
+        self._post_json('/api/clientes', {'nome': 'Sem Número'})
+        res = self.client.get('/api/clientes')
+        cliente = json.loads(res.data)['data'][0]
+        self.assertIsNone(cliente['whatsapp_url'])
+
+    # ── Listar Simples ──────────────────────────────────────────────────
+
+    def test_listar_simples_retorna_id_e_nome(self):
+        """Endpoint /simples deve retornar apenas id e nome."""
+        self._criar_cliente('Simpleza', '11900000000')
+        res = self.client.get('/api/clientes/simples')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+        c = data['data'][0]
+        self.assertIn('id', c)
+        self.assertIn('nome', c)
+        self.assertNotIn('numero', c)
+        self.assertNotIn('data_ultima_compra', c)
+
+    # ── Atualização ─────────────────────────────────────────────────────
+
+    def test_atualizar_cliente(self):
+        """Deve atualizar nome e número de um cliente."""
+        r = self._criar_cliente('Nome Antigo', '11900000001')
+        cliente_id = json.loads(r.data)['id']
+
+        res = self.client.put(
+            f'/api/clientes/{cliente_id}',
+            data=json.dumps({'nome': 'Nome Novo', 'numero': '11900000002'}),
+            content_type='application/json'
+        )
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Verificar no banco
+        list_res = self.client.get('/api/clientes')
+        clientes = json.loads(list_res.data)['data']
+        cliente = next(c for c in clientes if c['id'] == cliente_id)
+        self.assertEqual(cliente['nome'], 'Nome Novo')
+
+    def test_atualizar_cliente_inexistente_falha(self):
+        """Atualizar cliente que não existe deve retornar erro."""
+        res = self.client.put(
+            '/api/clientes/99999',
+            data=json.dumps({'nome': 'Fantasma'}),
+            content_type='application/json'
+        )
+        data = json.loads(res.data)
+        self.assertFalse(data['success'])
+        self.assertEqual(res.status_code, 400)
+
+    # ── Exclusão ────────────────────────────────────────────────────────
+
+    def test_remover_cliente(self):
+        """Deve remover um cliente existente."""
+        r = self._criar_cliente('Para Remover')
+        cliente_id = json.loads(r.data)['id']
+
+        res = self.client.delete(f'/api/clientes/{cliente_id}')
+        data = json.loads(res.data)
+        self.assertTrue(data['success'])
+
+        # Verificar que sumiu da lista
+        list_res = self.client.get('/api/clientes')
+        clientes = json.loads(list_res.data)['data']
+        ids = [c['id'] for c in clientes]
+        self.assertNotIn(cliente_id, ids)
+
+    def test_remover_cliente_inexistente_falha(self):
+        """Remover cliente que não existe deve retornar erro."""
+        res = self.client.delete('/api/clientes/99999')
+        data = json.loads(res.data)
+        self.assertFalse(data['success'])
+        self.assertEqual(res.status_code, 400)
+
+    # ── Inatividade ─────────────────────────────────────────────────────
+
+    def test_inatividade_alto_30_dias(self):
+        """Cliente com última compra há > 30 dias deve ter inativo_30d=True."""
+        from services.cliente_service import _calcular_inatividade
+        from datetime import date, timedelta
+
+        data_antiga = (date.today() - timedelta(days=35)).isoformat()
+        resultado = _calcular_inatividade(data_antiga)
+        self.assertEqual(resultado['dias'], 35)
+        self.assertIn('35', resultado['texto'])
+
+    def test_inatividade_comprou_hoje(self):
+        """Cliente com compra hoje deve ter texto 'Comprou hoje'."""
+        from services.cliente_service import _calcular_inatividade
+        from datetime import date
+
+        resultado = _calcular_inatividade(date.today().isoformat())
+        self.assertEqual(resultado['dias'], 0)
+        self.assertEqual(resultado['texto'], 'Comprou hoje')
+
+    def test_inatividade_nunca_comprou(self):
+        """Cliente sem compras deve retornar 'Nunca comprou'."""
+        from services.cliente_service import _calcular_inatividade
+        resultado = _calcular_inatividade(None)
+        self.assertIsNone(resultado['dias'])
+        self.assertEqual(resultado['texto'], 'Nunca comprou')
+
 
 class TestPrecos(BaseTestCase):
     """Testes para a funcionalidade de Preços."""

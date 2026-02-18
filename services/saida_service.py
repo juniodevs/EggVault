@@ -11,7 +11,7 @@ class SaidaService:
     """Lógica de negócios para registro de vendas/saídas de ovos."""
 
     @staticmethod
-    def registrar(quantidade, preco_unitario=None, valor_total=None, usuario_id=None, usuario_nome=''):
+    def registrar(quantidade, preco_unitario=None, valor_total=None, usuario_id=None, usuario_nome='', cliente_id=None):
         """
         Registra uma nova venda de ovos.
 
@@ -60,9 +60,33 @@ class SaidaService:
 
         mes_ref = datetime.now().strftime('%Y-%m')
 
-        sale_id = SaidaRepository.create(quantidade, preco_unitario, valor_total, mes_ref, usuario_id, usuario_nome)
+        # Resolver nome do cliente, se fornecido
+        cliente_nome = ''
+        if cliente_id:
+            try:
+                from repositories.cliente_repo import ClienteRepository
+                c = ClienteRepository.get_by_id(cliente_id)
+                if c:
+                    cliente_nome = c['nome']
+                else:
+                    cliente_id = None
+            except Exception:
+                cliente_id = None
+
+        sale_id = SaidaRepository.create(
+            quantidade, preco_unitario, valor_total, mes_ref,
+            usuario_id, usuario_nome, cliente_id, cliente_nome
+        )
         EstoqueService.atualizar(quantidade, 'subtract')
         RelatorioService.atualizar_resumo(mes_ref)
+
+        # Atualizar data da última compra do cliente (não bloqueia o fluxo)
+        if cliente_id:
+            try:
+                from services.cliente_service import ClienteService
+                ClienteService.registrar_compra(cliente_id)
+            except Exception:
+                pass
 
         return sale_id
 

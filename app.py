@@ -17,6 +17,7 @@ from services.despesa_service import DespesaService
 from services.auth_service import AuthService
 from services.export_service import ExportService
 from services.version_service import VersionService
+from services.cliente_service import ClienteService
 from datetime import datetime
 import os
 import re
@@ -266,10 +267,18 @@ def add_saida():
         if valor_total is not None:
             valor_total = float(valor_total)
 
+        cliente_id = data.get('cliente_id')
+        if cliente_id is not None:
+            try:
+                cliente_id = int(cliente_id)
+            except (TypeError, ValueError):
+                cliente_id = None
+
         sale_id = SaidaService.registrar(
             quantidade, preco_unitario, valor_total,
             usuario_id=request.usuario['id'],
-            usuario_nome=request.usuario['nome'] or request.usuario['username']
+            usuario_nome=request.usuario['nome'] or request.usuario['username'],
+            cliente_id=cliente_id
         )
         return jsonify({
             'success': True,
@@ -516,6 +525,89 @@ def delete_despesa(entry_id):
             'success': True,
             'message': f'Despesa de R$ {valor:.2f} removida'
         })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
+
+
+# ═══════════════════════════════════════════
+# API — CLIENTES
+# ═══════════════════════════════════════════
+
+@app.route('/api/clientes', methods=['GET'])
+@login_required
+def get_clientes():
+    """Lista todos os clientes."""
+    try:
+        clientes = ClienteService.listar()
+        return jsonify({'success': True, 'data': clientes})
+    except Exception as e:
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
+
+
+@app.route('/api/clientes/simples', methods=['GET'])
+@login_required
+def get_clientes_simples():
+    """Lista simplificada de clientes para selects (id + nome)."""
+    try:
+        clientes = ClienteService.listar_simples()
+        return jsonify({'success': True, 'data': clientes})
+    except Exception as e:
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
+
+
+@app.route('/api/clientes', methods=['POST'])
+@login_required
+def add_cliente():
+    """Cadastra um novo cliente."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
+
+        nome = data.get('nome', '')
+        numero = data.get('numero', '')
+        cliente_id = ClienteService.criar(nome, numero or None)
+        return jsonify({
+            'success': True,
+            'id': cliente_id,
+            'message': f'Cliente "{nome}" cadastrado com sucesso'
+        })
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
+
+
+@app.route('/api/clientes/<int:cliente_id>', methods=['PUT'])
+@login_required
+def update_cliente(cliente_id):
+    """Atualiza um cliente."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Dados não fornecidos'}), 400
+
+        ClienteService.atualizar(
+            cliente_id,
+            nome=data.get('nome'),
+            numero=data.get('numero')
+        )
+        return jsonify({'success': True, 'message': 'Cliente atualizado com sucesso'})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': _safe_error_message(e)}), 500
+
+
+@app.route('/api/clientes/<int:cliente_id>', methods=['DELETE'])
+@login_required
+def delete_cliente(cliente_id):
+    """Remove um cliente."""
+    try:
+        ClienteService.remover(cliente_id)
+        return jsonify({'success': True, 'message': 'Cliente removido com sucesso'})
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:

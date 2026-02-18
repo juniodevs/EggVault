@@ -459,6 +459,7 @@ async function loadTabData(tabName, forceRefresh = false) {
         case 'despesas':   await loadDespesas(); break;
         case 'precos':     await loadPrecos(); break;
         case 'relatorios': await loadRelatorios(); break;
+        case 'clientes':   await loadClientes(); break;
         case 'admin':      await loadAdminUsers(); break;
     }
     
@@ -688,7 +689,7 @@ function renderEntradasAnteriores(entradasPorDia, hoje) {
 // ═══════════════════════════════════════════
 
 async function loadVendas() {
-    showTableSkeleton('vendas-hoje-list', 6, 2);
+    showTableSkeleton('vendas-hoje-list', 7, 2);
     
     try {
         const mes = currentMonth.vendas;
@@ -708,6 +709,9 @@ async function loadVendas() {
             }
             updateVendaTotal();
         }
+
+        // Carregar clientes para o dropdown (não bloqueia)
+        loadClientesDropdown().catch(() => {});
 
         // Carregar lista de vendas
         const res = await api(`/api/saidas?mes=${mes}`);
@@ -752,7 +756,7 @@ function renderVendasHoje(vendas) {
     const tbody = document.getElementById('vendas-hoje-list');
     
     if (vendas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhuma venda registrada hoje</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhuma venda registrada hoje</td></tr>';
         document.getElementById('vendas-hoje-total').textContent = 'R$ 0,00';
         return;
     }
@@ -763,12 +767,16 @@ function renderVendasHoje(vendas) {
         totalHoje += s.valor_total;
         totalQtd += s.quantidade;
         const hora = new Date(s.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const clienteBadge = s.cliente_nome
+            ? `<span class="cliente-badge">${s.cliente_nome}</span>`
+            : '<span class="text-muted">—</span>';
         return `
             <tr>
                 <td>${hora}</td>
                 <td><strong>${s.quantidade}</strong></td>
                 <td>${formatCurrency(s.preco_unitario)}</td>
                 <td><strong>${formatCurrency(s.valor_total)}</strong></td>
+                <td>${clienteBadge}</td>
                 <td><span class="user-badge">${s.usuario_nome || '—'}</span></td>
                 <td>
                     <button class="btn-undo" onclick="undoVenda(${s.id}, ${s.quantidade})" title="Desfazer — devolver ao estoque">
@@ -784,7 +792,7 @@ function renderVendasHoje(vendas) {
             <td><strong>TOTAL</strong></td>
             <td><strong>${totalQtd} ovos</strong></td>
             <td colspan="2"><strong>${formatCurrency(totalHoje)}</strong></td>
-            <td colspan="2"></td>
+            <td colspan="3"></td>
         </tr>
     `;
 
@@ -814,12 +822,16 @@ function renderVendasAnteriores(vendasPorDia, hoje) {
             totalDia += s.valor_total;
             totalQtdDia += s.quantidade;
             const hora = new Date(s.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const clienteBadge = s.cliente_nome
+                ? `<span class="cliente-badge">${s.cliente_nome}</span>`
+                : '<span class="text-muted">—</span>';
             return `
                 <tr>
                     <td>${hora}</td>
                     <td><strong>${s.quantidade}</strong></td>
                     <td>${formatCurrency(s.preco_unitario)}</td>
                     <td><strong>${formatCurrency(s.valor_total)}</strong></td>
+                    <td>${clienteBadge}</td>
                     <td><span class="user-badge">${s.usuario_nome || '—'}</span></td>
                     <td>
                         <button class="btn-undo" onclick="undoVenda(${s.id}, ${s.quantidade})" title="Desfazer — devolver ao estoque">
@@ -846,6 +858,7 @@ function renderVendasAnteriores(vendasPorDia, hoje) {
                                 <th>Qtd</th>
                                 <th>Preço Unit.</th>
                                 <th>Total</th>
+                                <th>Cliente</th>
                                 <th>Usuário</th>
                                 <th>Ação</th>
                             </tr>
@@ -1762,6 +1775,156 @@ function changeMonth(section, delta) {
 }
 
 // ═══════════════════════════════════════════
+// ABA — CLIENTES
+// ═══════════════════════════════════════════
+
+let _clientesData = []; // cache local para filtro
+
+async function loadClientes() {
+    const tbody = document.getElementById('clientes-list');
+    if (tbody) showTableSkeleton('clientes-list', 5, 3);
+
+    try {
+        const res = await api('/api/clientes');
+        _clientesData = res.data;
+        renderClientes(_clientesData);
+    } catch (e) {
+        console.error('Erro ao carregar clientes:', e);
+    }
+}
+
+function renderClientes(clientes) {
+    const tbody = document.getElementById('clientes-list');
+    const countBar = document.getElementById('clientes-count');
+    if (!tbody) return;
+
+    if (clientes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum cliente cadastrado</td></tr>';
+        if (countBar) countBar.style.display = 'none';
+        return;
+    }
+
+    tbody.innerHTML = clientes.map(c => {
+        // Badge de inatividade
+        let inativBadge;
+        if (c.inativo_30d && c.inatividade_dias !== null) {
+            inativBadge = `<span class="inatividade-badge inatividade-alerta">${c.inatividade_texto}</span>`;
+        } else if (c.inatividade_dias === null) {
+            inativBadge = `<span class="inatividade-badge inatividade-nunca">Nunca comprou</span>`;
+        } else if (c.inatividade_dias === 0) {
+            inativBadge = `<span class="inatividade-badge inatividade-hoje">Comprou hoje</span>`;
+        } else {
+            inativBadge = `<span class="inatividade-badge inatividade-ok">${c.inatividade_texto}</span>`;
+        }
+
+        // Botão WhatsApp
+        let waBtnHtml;
+        if (c.whatsapp_url) {
+            waBtnHtml = `<a href="${c.whatsapp_url}" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm" title="Abrir WhatsApp">
+                <i class="fab fa-whatsapp"></i> <span class="wa-label">WhatsApp</span>
+            </a>`;
+        } else {
+            waBtnHtml = `<button class="btn btn-whatsapp btn-sm" disabled title="Número não cadastrado">
+                <i class="fab fa-whatsapp"></i> <span class="wa-label">WhatsApp</span>
+            </button>`;
+        }
+
+        const numeroDisplay = c.numero
+            ? `<span class="numero-tel">${c.numero}</span>`
+            : '<span class="text-muted">—</span>';
+
+        return `
+            <tr class="${c.inativo_30d ? 'cliente-inativo' : ''}">
+                <td><strong>${c.nome}</strong></td>
+                <td>${numeroDisplay}</td>
+                <td>${inativBadge}</td>
+                <td>${waBtnHtml}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-edit-small" onclick="showEditarCliente(${c.id}, '${escapeHtml(c.nome)}', '${c.numero || ''}')" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-undo" onclick="deleteCliente(${c.id}, '${escapeHtml(c.nome)}')" title="Remover">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    if (countBar) {
+        const inativos30 = clientes.filter(c => c.inativo_30d).length;
+        countBar.style.display = '';
+        countBar.innerHTML = `<span>${clientes.length} cliente(s)</span>${inativos30 > 0 ? `<span class="inativo-count"><i class="fas fa-exclamation-circle"></i> ${inativos30} inativo(s) há +30 dias</span>` : ''}`;
+    }
+}
+
+function filtrarClientes() {
+    const query = (document.getElementById('clientes-search')?.value || '').toLowerCase();
+    if (!query) {
+        renderClientes(_clientesData);
+        return;
+    }
+    const filtered = _clientesData.filter(c =>
+        c.nome.toLowerCase().includes(query) ||
+        (c.numero && c.numero.includes(query))
+    );
+    renderClientes(filtered);
+}
+
+function escapeHtml(str) {
+    return (str || '').replace(/'/g, "\\'").replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function showEditarCliente(id, nome, numero) {
+    document.getElementById('editar-cliente-id').value = id;
+    document.getElementById('editar-cliente-nome').value = nome;
+    document.getElementById('editar-cliente-numero').value = numero || '';
+    document.getElementById('modal-editar-cliente').style.display = 'flex';
+    document.getElementById('editar-cliente-nome').focus();
+}
+
+function hideEditarCliente() {
+    document.getElementById('modal-editar-cliente').style.display = 'none';
+}
+
+async function deleteCliente(id, nome) {
+    const ok = await customConfirm('Remover Cliente', `Remover o cliente "${nome}"? Esta ação não pode ser desfeita.`);
+    if (!ok) return;
+    try {
+        const res = await api(`/api/clientes/${id}`, { method: 'DELETE' });
+        showToast(res.message, 'success');
+        invalidateCache('clientes');
+        await loadClientes();
+        markCacheLoaded('clientes');
+        await loadClientesDropdown(); // Atualizar select no form de venda
+    } catch {
+        // Toast já exibido
+    }
+}
+
+async function loadClientesDropdown() {
+    const select = document.getElementById('venda-cliente');
+    if (!select) return;
+    try {
+        const res = await api('/api/clientes/simples');
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">— Selecionar cliente —</option>';
+        res.data.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.nome;
+            select.appendChild(opt);
+        });
+        // Restaurar seleção anterior se ainda existir
+        if (currentVal) select.value = currentVal;
+    } catch {
+        // Silencioso — dropdown é opcional
+    }
+}
+
+// ═══════════════════════════════════════════
 // CONFIGURAÇÕES
 // ═══════════════════════════════════════════
 
@@ -2117,6 +2280,83 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // ── Formulário: Cliente ──
+    document.getElementById('form-cliente').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="spinner"></span> Cadastrando...';
+            btn.disabled = true;
+
+            const nome = document.getElementById('cliente-nome').value.trim();
+            const numero = document.getElementById('cliente-numero').value.trim();
+
+            if (!nome) {
+                showToast('Nome é obrigatório', 'error');
+                return;
+            }
+
+            const res = await api('/api/clientes', {
+                method: 'POST',
+                body: JSON.stringify({ nome, numero: numero || null })
+            });
+
+            showToast(res.message, 'success');
+            e.target.reset();
+            invalidateCache('clientes');
+            await loadClientes();
+            markCacheLoaded('clientes');
+            await loadClientesDropdown();
+
+        } catch (err) {
+            // Toast já exibido
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    // ── Formulário: Editar Cliente ──
+    document.getElementById('form-editar-cliente').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="spinner"></span> Salvando...';
+            btn.disabled = true;
+
+            const id = parseInt(document.getElementById('editar-cliente-id').value);
+            const nome = document.getElementById('editar-cliente-nome').value.trim();
+            const numero = document.getElementById('editar-cliente-numero').value.trim();
+
+            const res = await api(`/api/clientes/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ nome, numero: numero || '' })
+            });
+
+            showToast(res.message, 'success');
+            hideEditarCliente();
+            invalidateCache('clientes');
+            await loadClientes();
+            markCacheLoaded('clientes');
+            await loadClientesDropdown();
+
+        } catch (err) {
+            // Toast já exibido
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+
+    // ── Fechar modal editar cliente ao clicar fora ──
+    document.getElementById('modal-editar-cliente').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('modal-editar-cliente')) hideEditarCliente();
+    });
+
     // ── Formulário: Entrada ──
     document.getElementById('form-entrada').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -2182,6 +2422,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 payload.valor_total = valor_total;
             }
 
+            // Incluir cliente se selecionado
+            const clienteSelect = document.getElementById('venda-cliente');
+            if (clienteSelect && clienteSelect.value) {
+                payload.cliente_id = parseInt(clienteSelect.value);
+            }
+
             const res = await api('/api/saidas', {
                 method: 'POST',
                 body: JSON.stringify(payload)
@@ -2191,8 +2437,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('venda-quantidade').value = '';
             document.getElementById('venda-preco').value = '';
             document.getElementById('venda-total').value = '';
+            if (clienteSelect) clienteSelect.value = '';
             lastEditedField = null;
-            invalidateCache('vendas', 'estoque', 'relatorios');
+            invalidateCache('vendas', 'estoque', 'relatorios', 'clientes');
             await loadVendas();
             markCacheLoaded('vendas');
 

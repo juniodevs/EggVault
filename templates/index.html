@@ -142,6 +142,33 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════ MODAL EDITAR CLIENTE ═══════════════════════════ -->
+    <div class="modal-overlay" id="modal-editar-cliente" style="display:none;">
+        <div class="modal-card">
+            <h3><i class="fas fa-user-edit"></i> Editar Cliente</h3>
+            <form id="form-editar-cliente">
+                <input type="hidden" id="editar-cliente-id">
+                <div class="form-group">
+                    <label for="editar-cliente-nome">Nome</label>
+                    <input type="text" id="editar-cliente-nome" required placeholder="Nome do cliente" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="editar-cliente-numero">Telefone / WhatsApp <span class="optional-label">(opcional)</span></label>
+                    <input type="tel" id="editar-cliente-numero" placeholder="Ex: 11999990000">
+                    <small class="form-hint">Somente números. Se não tiver código do país, assume Brasil (+55)</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-icon-text" onclick="hideEditarCliente()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -184,6 +211,10 @@
             <li data-tab="relatorios">
                 <i class="fas fa-chart-pie"></i>
                 <span>Relatórios</span>
+            </li>
+            <li data-tab="clientes">
+                <i class="fas fa-users"></i>
+                <span>Clientes</span>
             </li>
             <li data-tab="admin" id="nav-admin" style="display:none;">
                 <i class="fas fa-users-cog"></i>
@@ -381,6 +412,12 @@
                             <label for="venda-total">Valor Total (R$)</label>
                             <input type="text" id="venda-total" class="total-input" required placeholder="0,00" inputmode="decimal">
                         </div>
+                        <div class="form-group">
+                            <label for="venda-cliente">Cliente <span class="optional-label">(opcional)</span></label>
+                            <select id="venda-cliente">
+                                <option value="">— Selecionar cliente —</option>
+                            </select>
+                        </div>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-check"></i> Registrar Venda
                         </button>
@@ -401,12 +438,13 @@
                                     <th>Qtd</th>
                                     <th>Preço Unit.</th>
                                     <th>Total</th>
+                                    <th>Cliente</th>
                                     <th>Usuário</th>
                                     <th>Ação</th>
                                 </tr>
                             </thead>
                             <tbody id="vendas-hoje-list">
-                                <tr><td colspan="6" class="empty-state">Nenhuma venda registrada hoje</td></tr>
+                                <tr><td colspan="7" class="empty-state">Nenhuma venda registrada hoje</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -798,6 +836,63 @@
                     <div class="chart-container chart-container-pie">
                         <canvas id="chart-distribuicao"></canvas>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════ ABA: CLIENTES ══════════ -->
+        <section id="tab-clientes" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-users"></i> Clientes</h1>
+                <p class="subtitle">Gerencie seus clientes e acompanhe o histórico de compras</p>
+            </div>
+
+            <div class="content-grid">
+                <!-- Formulário de cadastro -->
+                <div class="card form-card">
+                    <h3><i class="fas fa-user-plus"></i> Novo Cliente</h3>
+                    <form id="form-cliente">
+                        <div class="form-group">
+                            <label for="cliente-nome">Nome <span class="required-mark">*</span></label>
+                            <input type="text" id="cliente-nome" required placeholder="Ex: Maria da Silva" maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="cliente-numero">Telefone / WhatsApp <span class="optional-label">(opcional)</span></label>
+                            <input type="tel" id="cliente-numero" placeholder="Ex: 11999990000">
+                            <small class="form-hint">Somente números. Se não tiver código do país, assume Brasil (+55)</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> Cadastrar Cliente
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Lista de clientes -->
+                <div class="card list-card clientes-list-card">
+                    <div class="card-header-row">
+                        <h3><i class="fas fa-list"></i> Clientes Cadastrados</h3>
+                        <div class="clientes-search-wrapper">
+                            <i class="fas fa-search clientes-search-icon"></i>
+                            <input type="text" id="clientes-search" placeholder="Buscar cliente..." class="clientes-search-input" oninput="filtrarClientes()">
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="clientes-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Telefone</th>
+                                    <th>Última Compra</th>
+                                    <th>WhatsApp</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientes-list">
+                                <tr><td colspan="5" class="empty-state">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="clientes-count" class="clientes-count-bar" style="display:none;"></div>
                 </div>
             </div>
         </section>
