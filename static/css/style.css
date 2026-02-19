@@ -49,10 +49,9 @@ body {
     line-height: 1.6;
     display: flex;
     min-height: 100vh;
-    /* Impede scroll horizontal SEM quebrar scroll vertical.
-       width:100% + overflow-x:clip é seguro no iOS, ao contrário de hidden no html/body */
+    /* Impede overflow horizontal da página sem bloquear rolagem interna de wrappers */
     width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
 }
 
 /* ═══════════════════════════════════════════
@@ -845,9 +844,18 @@ body {
 
 .table-wrapper {
     overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-sm);
     /* Garante que a tabela nunca cause overflow na página */
     max-width: 100%;
+    width: 100%;
+    touch-action: pan-x pan-y;
+}
+
+.table-wrapper > table {
+    width: max-content;
+    min-width: 100%;
 }
 
 table {
@@ -1239,17 +1247,23 @@ tbody tr.total-row td {
     }
 
     table {
-        min-width: 360px;
+        min-width: 100%;
     }
 
     tbody td {
         padding: 11px 10px;
         font-size: 0.82rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     thead th {
         padding: 10px;
         font-size: 0.73rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     /* ─── Content grid ─── */
@@ -1381,7 +1395,7 @@ tbody tr.total-row td {
     }
 
     table {
-        min-width: 300px;
+        min-width: 100%;
     }
 
     /* Bottom nav: só ícone */
